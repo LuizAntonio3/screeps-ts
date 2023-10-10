@@ -21,6 +21,7 @@ declare global {
     role: string;
     room: string;
     working: boolean;
+    managerRoom: Room;
   }
 
   interface ProcessCache {
