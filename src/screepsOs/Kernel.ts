@@ -1,5 +1,6 @@
 import { Scheduler } from "./Scheduler";
 import { Process } from "./Process";
+import { ScreepsSerializer } from "./Serializer";
 
 export class Kernel {
     maxUsageCPU: number;
@@ -11,19 +12,20 @@ export class Kernel {
     }
 
     public tick() {
-        // get new process from the scheduler and runs it
-        // console.log("tick before: ", Game.cpu.getUsed());
 
         while (Game.cpu.getUsed() < this.maxUsageCPU) {
             let cpuAvailable = this.maxUsageCPU - Game.cpu.getUsed();
             let process = this.scheduler.getProcess(cpuAvailable);
-            // break if there is no process
+
+            console.log("Process in kernel: " + JSON.stringify(process));
+
             if (!process)
                 break;
 
             process.run();
         }
 
-        // console.log("tick after: ", Game.cpu.getUsed());
+        this.scheduler.endOfTick();
+        ScreepsSerializer.serializeToMemory(Scheduler.getProcessTable());
     }
 }

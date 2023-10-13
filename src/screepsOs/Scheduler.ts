@@ -1,46 +1,78 @@
-import { Process } from "./Process"
-import * as rolesIndex from "roles/index"
+import { Process, ProcessStatus } from "./Process"
 
 export class Scheduler {
-    processTable: Array<Process> = [];
+    static processTable: Array<Process> = []; // problem when seri c alizing this
+    executedProcess: Array<Process>;
 
-    constructor() {
-        // first restore process from creeps
-        for (let name in Game.creeps) {
-            let creep = Game.creeps[name];
-            let creepRole = creep.memory.role;
-
-            if (creepRole in rolesIndex) {
-                let creepProcess = new (rolesIndex as any)[creepRole](creep); // add to memory the has run in the last tick flag
-                this.addNewProcess(creepProcess);
-            }
-            else {
-                console.log("invalid role: " + creepRole);
-            }
-        }
-
-        // TODO: restore the rest of the process from memory
+    constructor(processTable: Array<Process> | null) {
+        if(processTable)
+            Scheduler.rebuildProcessTable(processTable)
+        this.organizeTable();
+        this.executedProcess = [];
     }
 
-    public addNewProcess(process: Process) {
-        this.processTable.push(process);
+    static rebuildProcessTable(processArray: Array<Process>){
+        Scheduler.processTable = Scheduler.processTable.concat(processArray);
+    }
+
+    getProcessByPID(PID: string): Process | null {
+        return _.filter(Scheduler.processTable, process => {
+            let processComparison = process.PID === PID;
+            return processComparison;
+        })[0];
+    }
+
+    static addNewProcess(process: Process) {
+        Scheduler.processTable.push(process);
+    }
+
+    static getProcessTable(): Array<Process> {
+        return Scheduler.processTable;
     }
 
     public getProcess(maxCPU: number): Process | null {
         // return a process that is below the maxCPU usage to the kernel to run
-        let process = this.processTable.pop();
+        let process = Scheduler.processTable.shift();
         if (!process) {
             return null;
         }
 
+        this.executedProcess.push(process);
         return process;
     }
 
-    public organizeTable() {
-        // organize table according to process priority
+    organizeTable() {
+        _.sortBy(Scheduler.processTable, (process) => process.currentPriority)
     }
 
-    public checkPriority() {
-        // TODO: iterate over the process table and give bigger priority to the process that did not run in this tick
+    increasePriority() {
+        // TODO: takes flags from its parent process to check the correct amount of increase
+        let amount = 1;
+        _.forEach(Scheduler.processTable, process => process.increaseCurrentPriority(amount));
+    }
+
+    public addBackProcess() {
+        // TODO: check if process is still alive to add back
+        _.remove(this.executedProcess, process => {
+            if(process.status == ProcessStatus.running){
+                process.resetPriority();
+                return false;
+            }
+            else
+                return true;
+        });
+        // console.log("ProcessTable before add back: " + JSON.stringify(Scheduler.getProcessTable()) + "\n" + JSON.stringify(this.executedProcess));
+        if(this.executedProcess.length > 0)
+            Scheduler.rebuildProcessTable(this.executedProcess);
+        // console.log("ProcessTable after add back: " + JSON.stringify(Scheduler.getProcessTable()) + "\n" + JSON.stringify(this.executedProcess));
+    }
+
+    endOfTick() {
+        // console.log("process before endOfTick: " + JSON.stringify(this.executedProcess));
+        this.increasePriority();
+        // console.log("process middle endOfTick: " + JSON.stringify(this.executedProcess));
+        this.addBackProcess();
+        // console.log("process after endOfTick: " + JSON.stringify(this.executedProcess));
+        // console.log("Table after endOfTick: " + JSON.stringify(Scheduler.processTable));
     }
 }
