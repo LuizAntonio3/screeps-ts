@@ -4,7 +4,7 @@ export class Upgrader extends Process {
     creep: Creep;
 
     constructor (creep: Creep){
-        super();
+        super("", 1, true);
         this.creep = creep;
     }
 

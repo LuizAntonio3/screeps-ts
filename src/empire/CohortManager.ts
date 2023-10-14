@@ -2,28 +2,40 @@ import { Process, PriorityLevel } from "screepsOs/Process";
 import { Request } from "./Request";
 import { ImmunesManager } from "./ImmunesManager";
 
-// class RemoteImmunesManager{} // remote works related
 class CenturysManager{} // war related
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
 export class CohortManager extends Process{
-    room: Room;
-    immunesManager: ImmunesManager;
-    // remoteImmunesManager: RemoteImmunesManager | null;
+    _class: string = CohortManager.name;
+    roomName: string;
+    immmunesManagerPID: string | null;
     centurysManager: CenturysManager | null;
     requestsToEmpire: Array<Request>;
     // requests: Array<Request>;
     // requestsBeenExecuted: Array<Request>;
 
-    constructor(PPID: string, room: Room) {
-        super(PPID, PriorityLevel.DEFAULT);
-        this.room = room;
-        this.immunesManager = new ImmunesManager(this.PID, PriorityLevel.DEFAULT, this.room); // this one will always exist
-        // this.remoteImmunesManager = null;
+    constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
+        super(PPID, priority, generatePID);
+        this.roomName = roomName;
+        this.immmunesManagerPID = null;
         this.centurysManager = null;
         this.requestsToEmpire = [];
         // this.requests = [];
         // this.requestsBeenExecuted = []
+
+        if (generatePID && !this.immmunesManagerPID){
+            let newImmunesManager = new ImmunesManager(true, this.PID, PriorityLevel.DEFAULT, this.roomName); // this one will always exist
+            this.immmunesManagerPID = newImmunesManager.PID;
+        }
+    }
+
+    private makeRequest(request: Request) {
+        this.requestsToEmpire.push(request);
+    }
+
+    getRequests(): Array<Request>|null {
+        // should return a single or list of requests?
+        return this.requestsToEmpire;
     }
 
     // takeRequestsFromImmunes() {
@@ -46,15 +58,6 @@ export class CohortManager extends Process{
     // takeRequestsFromCenturys() {
     //     // same as immunes
     // }
-
-    private makeRequest(request: Request) {
-        this.requestsToEmpire.push(request);
-    }
-
-    getRequests(): Array<Request>|null {
-        // should return a single or list of requests?
-        return this.requestsToEmpire;
-    }
 
     // processRequests() {
     //     if(this.requests.length == 0)

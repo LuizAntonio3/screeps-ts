@@ -1,8 +1,8 @@
 import { Scheduler } from "./Scheduler";
 
 export enum ProcessStatus {
-    running,
-    stopped
+    stopped,
+    running
 }
 
 export enum PriorityLevel {
@@ -21,13 +21,17 @@ export class Process {
     private _currentPriority: number;
     // TODO: ADD mean tick usage for the last 5 ticks so that the kernel can use as estimative
 
-    constructor(PPID: string | null, priority: number) {
-        this._PID = Process.generatePID();
+    constructor(PPID: string | null, priority: number, generatePID: boolean) {
+        if(generatePID){
+            this._PID = Process.generatePID();
+            Scheduler.addNewProcess(this);
+        }
+        else
+            this._PID = "";
         this._PPID = PPID;
         this._priority = priority;
         this._currentPriority = priority;
         this._status = ProcessStatus.running;
-        Scheduler.addNewProcess(this);
     }
 
     run() {
@@ -82,5 +86,12 @@ export class Process {
         let PID = `${Game.time}-${Process.tickPIDNumerator}`;
         Process.tickPIDNumerator++;
         return PID;
+    }
+
+    rebuild(memory: any) {
+        let that: any = this;
+        Object.keys(memory).forEach(function(key) {
+            that[key] = memory[key];
+        });
     }
 }

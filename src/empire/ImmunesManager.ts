@@ -1,5 +1,4 @@
 import { Process } from "screepsOs/Process";
-import * as rolesIndex from "roles/index"
 import { Request } from "./Request";
 
 // Manages the workes
@@ -7,13 +6,18 @@ export class ImmunesManager extends Process {
 
     creepsAmount = { harvester: 1 };
 
-    room: Room;
-    // requestsToCohort: Array<Request>;
+    _class: string = ImmunesManager.name;
+    roomName: string;
+    requestsToCohort: Array<Request>;
 
-    constructor(PPID: string, priority: number, room: Room) { // maybe add room
-        super(PPID, priority);
-        // this.requestsToCohort = []
-        this.room = room;
+    constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
+        super(PPID, priority, generatePID);
+        this.roomName = roomName;
+        this.requestsToCohort = []
+    }
+
+    private getRoom(): Room {
+        return Game.rooms[this.roomName];
     }
 
     // private makeRequest(request: Request) {
@@ -70,8 +74,8 @@ export class ImmunesManager extends Process {
     spawnTest() {
         let harvesters = _.filter(Game.creeps, creep => creep.memory.role == "harvester");
 
-        if (harvesters && harvesters.length < 1000) {
-            let freeSpawn = _.filter(Game.spawns, spawn => spawn.room === this.room && !spawn.spawning);
+        if (harvesters && harvesters.length < 2) {
+            let freeSpawn = _.filter(Game.spawns, spawn => spawn.room === this.getRoom() && !spawn.spawning);
 
             if(freeSpawn && freeSpawn.length > 0){
                 freeSpawn[0].spawnCreep([WORK, MOVE, CARRY], "harvester" + Game.time, { memory: { sourceId: null, harvesting: true, role: "harvester" } });

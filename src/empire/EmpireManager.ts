@@ -1,38 +1,39 @@
 import { Process, PriorityLevel } from "screepsOs/Process";
 import { CohortManager } from "./CohortManager";
 import { Request } from "./Request";
+import { Scheduler } from "screepsOs/Scheduler";
 
-// Empire Manger - deals with all the rooms
+// Empire Manager - deals with all the rooms
 // chooses when to go to another room and the interaction between the two - like help in echonomy and war
 export class EmpireManager extends Process{
-    cohorts: Array<CohortManager>;
+    _class: string = EmpireManager.name;
+    cohortsPID: Array<string>;
     requests: Array<Request>;
 
-    constructor() {
-        super(null, PriorityLevel.HIGH);
-        Memory.empireProcessPID = this.PID;
-        this.cohorts = [];
+    constructor(generatePID: boolean = false) {
+        super(null, PriorityLevel.HIGH, generatePID);
+        this.cohortsPID = [];
         this.requests = [];
     }
 
-    takeRequestsFromCohorts() {
-        for(let cohort of this.cohorts){
-            let cohortRequests = cohort.getRequests();
-            if(cohortRequests){
-                this.requests.concat(cohortRequests);
-            }
-        }
+    retrieveCohorts(): any {
+        let cohorts: Array<Process> = []
+
+        _.filter(this.cohortsPID, (cohortPID) => {
+            let result = Scheduler.getCompleteProcessTable().find((process) => process.PID === cohortPID);
+            if(result)
+                cohorts.push(result);
+        });
+
+        return cohorts;
     }
 
-    processRequests() {
-
-    }
-
-    createCohorts() {
+    createCohorts(cohorts: Array<CohortManager>) { // there is a bug in this
         let myRooms = _.filter(Game.rooms, r => r.controller && r.controller.level > 0 && r.controller.my);
+
         let roomThatAreNotCohorts = _.filter(myRooms, (room) => {
-            for(let cohort of this.cohorts){
-                if(cohort.room === room)
+            for(let cohort of cohorts){
+                if(room.name === cohort.roomName)
                     return false;
             }
 
@@ -43,13 +44,29 @@ export class EmpireManager extends Process{
             return;
 
         for(let room of roomThatAreNotCohorts){
-            this.cohorts.push(new CohortManager(this.PID, room));
+            let newCohort = new CohortManager(true, this.PID, PriorityLevel.DEFAULT, room.name);
+            this.cohortsPID.push(newCohort.PID);
         }
     }
 
+    takeRequestsFromCohorts(cohorts: Array<CohortManager>) {
+        for(let cohort of cohorts){
+            let cohortRequests = cohort.getRequests();
+            if(cohortRequests){
+                this.requests.concat(cohortRequests);
+            }
+        }
+    }
+
+    processRequests() {
+        // TODO: process requests
+        return
+    }
+
     run(){
-        this.createCohorts();
-        this.takeRequestsFromCohorts();
+        let cohorts = this.retrieveCohorts();
+        this.createCohorts(cohorts);
+        this.takeRequestsFromCohorts(cohorts);
         this.processRequests();
     }
 }

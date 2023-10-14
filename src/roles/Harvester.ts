@@ -4,7 +4,7 @@ export class Harvester extends Process {
     creep: Creep;
 
     constructor(creep: Creep) {
-        super();
+        super("", 1, true);
         this.creep = creep;
     }
 
@@ -19,12 +19,12 @@ class HarvestEnergy extends Process {
     creep: Creep;
 
     constructor(creep: Creep) {
-        super();
+        super("", 1, true);
         this.creep = creep;
     }
 
     run() {
-        this.creep.harvestEnergy();
+        // this.creep.harvestEnergy();
     }
 }
 
@@ -32,11 +32,11 @@ class DeliveryEnergy extends Process {
     creep: Creep;
 
     constructor(creep: Creep) {
-        super();
+        super("", 1, true);
         this.creep = creep;
     }
 
     reun() {
-        this.creep.deliveryEnergy();
+        // this.creep.deliveryEnergy();
     }
 }

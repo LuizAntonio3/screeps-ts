@@ -4,10 +4,8 @@ import { ScreepsSerializer } from "./Serializer";
 
 export class Kernel {
     maxUsageCPU: number;
-    scheduler: Scheduler;
 
-    constructor(scheduler: Scheduler, maxUsageCPU: number) {
-        this.scheduler = scheduler;
+    constructor(maxUsageCPU: number) {
         this.maxUsageCPU = maxUsageCPU;
     }
 
@@ -15,9 +13,9 @@ export class Kernel {
 
         while (Game.cpu.getUsed() < this.maxUsageCPU) {
             let cpuAvailable = this.maxUsageCPU - Game.cpu.getUsed();
-            let process = this.scheduler.getProcess(cpuAvailable);
+            let process = Scheduler.getProcess(cpuAvailable);
 
-            console.log("Process in kernel: " + JSON.stringify(process));
+            // console.log("Process in kernel: " + JSON.stringify(process));
 
             if (!process)
                 break;
@@ -25,7 +23,9 @@ export class Kernel {
             process.run();
         }
 
-        this.scheduler.endOfTick();
-        ScreepsSerializer.serializeToMemory(Scheduler.getProcessTable());
+        Scheduler.endOfTick();
+        _.forEach(Scheduler.processTable, process => console.log(JSON.stringify(process)));
+        ScreepsSerializer.serializeToMemory(Scheduler.processTable);
+        Scheduler.resetArrays();
     }
 }
