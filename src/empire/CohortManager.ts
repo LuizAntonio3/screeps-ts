@@ -4,6 +4,13 @@ import { ImmunesManager } from "./ImmunesManager";
 
 class CenturysManager{} // war related
 
+interface SourceInfo {
+    sourceId: Id<Source>;
+    availableSpots: number;
+    creepsAmountAssigned: number;
+    workPartsAssigned: number;
+}
+
 // Basically the RoomManager - Also dealing with Remotes of this Room
 export class CohortManager extends Process{
     _class: string = CohortManager.name;
@@ -11,6 +18,8 @@ export class CohortManager extends Process{
     immmunesManagerPID: string | null;
     centurysManager: CenturysManager | null;
     requestsToEmpire: Array<Request>;
+    sourcesInfo: Array<SourceInfo>;
+    extensions: Array<Id<StructureSpawn|StructureExtension>>;
     // requests: Array<Request>;
     // requestsBeenExecuted: Array<Request>;
 
@@ -20,13 +29,33 @@ export class CohortManager extends Process{
         this.immmunesManagerPID = null;
         this.centurysManager = null;
         this.requestsToEmpire = [];
+        this.sourcesInfo = [];
+        this.extensions = [];
         // this.requests = [];
         // this.requestsBeenExecuted = []
 
         if (generatePID && !this.immmunesManagerPID){
             let newImmunesManager = new ImmunesManager(true, this.PID, PriorityLevel.DEFAULT, this.roomName); // this one will always exist
             this.immmunesManagerPID = newImmunesManager.PID;
+            let room = this.getRoom();
+            let sourceInfo: SourceInfo = {
+                sourceId: room.findEnergySources(),
+                availableSpots: room.findFreeSpotsAroundSource(),
+                creepsAmountAssigned: 0,
+                workPartsAssigned: 0
+            };
+
+            this.sourcesInfo.push(sourceInfo);
+            this.updateExtensionsList();
         }
+    }
+
+    private updateExtensionsList() {
+        // TODO: recheck extensions id and list - called when id is not found or extension is built
+    }
+
+    private getRoom(): Room {
+        return Game.rooms[this.roomName];
     }
 
     private makeRequest(request: Request) {

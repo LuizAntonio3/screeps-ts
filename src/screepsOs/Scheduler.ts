@@ -27,8 +27,10 @@ export class Scheduler {
         Scheduler.processTable.push(process);
     }
 
-    static getProcessByPID(PID: string): Process | null {
-        return _.filter(Scheduler.processTable, process => {
+    static getProcessByPID(PID: string | null): Process | null {
+        if(!PID)
+            return null;
+        return _.filter(Scheduler.getCompleteProcessTable(), process => {
             let processComparison = process.PID === PID;
             return processComparison;
         })[0];
@@ -57,7 +59,7 @@ export class Scheduler {
 
     static addBackProcess() {
         _.remove(Scheduler.executedProcessTable, process => {
-            if(process.status == ProcessStatus.running){
+            if(process.status == ProcessStatus.RUNNING){
                 process.resetPriority();
                 return false;
             }

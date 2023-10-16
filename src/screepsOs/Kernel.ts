@@ -22,10 +22,5 @@ export class Kernel {
 
             process.run();
         }
-
-        Scheduler.endOfTick();
-        _.forEach(Scheduler.processTable, process => console.log(JSON.stringify(process)));
-        ScreepsSerializer.serializeToMemory(Scheduler.processTable);
-        Scheduler.resetArrays();
     }
 }

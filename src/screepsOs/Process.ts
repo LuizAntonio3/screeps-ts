@@ -1,8 +1,8 @@
 import { Scheduler } from "./Scheduler";
 
 export enum ProcessStatus {
-    stopped,
-    running
+    STOPPED,
+    RUNNING
 }
 
 export enum PriorityLevel {
@@ -31,7 +31,7 @@ export class Process {
         this._PPID = PPID;
         this._priority = priority;
         this._currentPriority = priority;
-        this._status = ProcessStatus.running;
+        this._status = ProcessStatus.RUNNING;
     }
 
     run() {
@@ -42,8 +42,8 @@ export class Process {
         return this._status;
     }
 
-    set status(status: ProcessStatus) {
-        this._status = status;
+    killProcess() {
+        this._status = ProcessStatus.STOPPED
     }
 
     get PID(): string {
@@ -58,7 +58,7 @@ export class Process {
         return this._PPID;
     }
 
-    set PIID(PIID: string) {
+    set PPID(PIID: string) {
         this._PPID = PIID;
     }
 
