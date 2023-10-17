@@ -6,8 +6,8 @@ import { ErrorMapper } from "utils/ErrorMapper";
 import { ScreepsSerializer } from "screepsOs/Serializer";
 import * as rolesIndex from "tasks/index"
 
-import * as creepPrototype from "prototypes/creep"
-import * as roomPrototype from "prototypes/room"
+import "prototypes/creep"
+import "prototypes/room"
 
 declare global {
   // Memory extension samples

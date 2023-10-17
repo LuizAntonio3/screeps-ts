@@ -1,19 +1,19 @@
-export let prototype = "room";
+export {}
 
 declare global {
     interface Room {
-        findEnergySources: Function;
-        findFreeSpotsAroundObject: Function;
-        findFreeSpotsAroundSource: Function;
+        findEnergySources(): Array<Source>;
+        findFreeSpotsAroundObject(object: Structure | Source): Array<Array<number>>;
+        findFreeSpotsAroundSource(source: Source): number;
     }
 }
 
 Room.prototype.findEnergySources = function findEnergySources() {
-    let energySources = this.find(FIND_SOURCES).map(sourceObj => sourceObj.id);
+    let energySources = this.find(FIND_SOURCES);
     return energySources;
 }
 
-Room.prototype.findFreeSpotsAroundObject = function findFreeSpotsAroundObject(object: Structure) {
+Room.prototype.findFreeSpotsAroundObject = function findFreeSpotsAroundObject(object: Structure | Source) {
     let inX = object.pos.x - 1;
     let inY = object.pos.y - 1;
 
@@ -25,7 +25,7 @@ Room.prototype.findFreeSpotsAroundObject = function findFreeSpotsAroundObject(ob
     for (let i = inX; i < inX + 3 && i <= 48; i++) { // verify this max size
         for (let j = inY; j < inY + 3 && i <= 48; j++) {
             if (this.getTerrain().get(i, j) != TERRAIN_MASK_WALL) {
-                freeSpots.push([i, j, true]);
+                freeSpots.push([i, j]);
             }
         }
     }

@@ -58,7 +58,7 @@ export class Process {
         return this._PPID;
     }
 
-    set PPID(PIID: string) {
+    set PPID(PIID: string | null) {
         this._PPID = PIID;
     }
 
@@ -72,6 +72,10 @@ export class Process {
 
     get currentPriority(): number {
         return this._currentPriority;
+    }
+
+    set currentPriority(priority) {
+        this._priority = priority;
     }
 
     increaseCurrentPriority(increment: number) {

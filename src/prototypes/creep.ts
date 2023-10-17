@@ -7,7 +7,7 @@ declare global {
     }
 
     interface Creep {
-        isAlive: Function;
+        isAlive(): boolean;
     }
 }
 

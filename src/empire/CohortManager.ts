@@ -38,14 +38,24 @@ export class CohortManager extends Process{
             let newImmunesManager = new ImmunesManager(true, this.PID, PriorityLevel.DEFAULT, this.roomName); // this one will always exist
             this.immmunesManagerPID = newImmunesManager.PID;
             let room = this.getRoom();
-            let sourceInfo: SourceInfo = {
-                sourceId: room.findEnergySources(),
-                availableSpots: room.findFreeSpotsAroundSource(),
-                creepsAmountAssigned: 0,
-                workPartsAssigned: 0
-            };
 
-            this.sourcesInfo.push(sourceInfo);
+            let sources = room.findEnergySources();
+
+            if (sources.length > 0){
+                for (let source of sources){
+                    let sourceInfo: SourceInfo = { // bug
+                        sourceId: source.id,
+                        availableSpots: room.findFreeSpotsAroundSource(source),
+                        creepsAmountAssigned: 0,
+                        workPartsAssigned: 0
+                    };
+
+                    this.sourcesInfo.push(sourceInfo);
+                }
+            }
+
+
+
             this.updateExtensionsList();
         }
     }
