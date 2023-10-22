@@ -1,12 +1,16 @@
 import { Process, ProcessStatus } from "./Process"
+import { ScreepsSerializer } from "./Serializer";
 
 export class Scheduler {
     static processTable: Array<Process> = [];
     static executedProcessTable: Array<Process>;
 
-    constructor(processTable: Array<Process> | null) {
+    constructor() {
+        let processTable = ScreepsSerializer.deserializeFromMemory();
+
         if(processTable)
             Scheduler.rebuildProcessTable(processTable)
+
         Scheduler.organizeTable();
         Scheduler.executedProcessTable = [];
     }
@@ -74,8 +78,10 @@ export class Scheduler {
 
     }
 
-    static endOfTick() {
-        this.increasePriority();
-        this.addBackProcess();
+    endOfTick() {
+        Scheduler.increasePriority();
+        Scheduler.addBackProcess();
+        ScreepsSerializer.serializeToMemory(Scheduler.processTable);
+        Scheduler.resetArrays();
     }
 }

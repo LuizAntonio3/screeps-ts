@@ -1,16 +1,12 @@
 import { EmpireManager } from "empire/EmpireManager";
 import { Kernel } from "screepsOs/Kernel";
 import { Scheduler } from "screepsOs/Scheduler";
-import { Process } from "screepsOs/Process";
 import { ErrorMapper } from "utils/ErrorMapper";
-import { ScreepsSerializer } from "screepsOs/Serializer";
-import * as rolesIndex from "tasks/index"
 
 import "prototypes/creep"
 import "prototypes/room"
 
 declare global {
-  // Memory extension samples
   interface Memory {
     uuid: number;
     log: any;
@@ -32,22 +28,21 @@ declare global {
 
 var maxCPUPerTickPercentual = 0.7; // maximum is Game.cpu.tickLimit = 500 when bucket is full
 export const loop = ErrorMapper.wrapLoop(() => {
-  let processTable = ScreepsSerializer.deserializeFromMemory();
-  let scheduler = new Scheduler(processTable);
   debugger;
+
+  let maxCPUPerTick = maxCPUPerTickPercentual * Game.cpu.tickLimit; // TODO: check this based on bucket size
+
+  let kernel = new Kernel(maxCPUPerTick);
+  let scheduler = new Scheduler();
   let empire = Scheduler.getProcessByPID(Memory.empireProcessPID);
 
-  if(!empire){
+  if (!empire) {
     empire = new EmpireManager(true);
     Memory.empireProcessPID = empire.PID;
   }
 
-  let maxCPUPerTick = maxCPUPerTickPercentual * Game.cpu.tickLimit;
-  let kernel = new Kernel(maxCPUPerTick);
   kernel.tick();
-  Scheduler.endOfTick();
-  ScreepsSerializer.serializeToMemory(Scheduler.processTable);
-  Scheduler.resetArrays();
+  scheduler.endOfTick();
 
   // Automatically delete memory of missing creeps - turn this into a process
   for (const name in Memory.creeps) {
