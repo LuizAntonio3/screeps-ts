@@ -1,6 +1,8 @@
 import { Process } from "screepsOs/Process";
 
 export class Task extends Process {
+
+    // check need for this class
     constructor(generatePID: boolean = false, PPID: string, priority: number) {
         super(PPID, priority, generatePID);
     }

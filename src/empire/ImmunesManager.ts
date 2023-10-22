@@ -2,7 +2,7 @@ import { PriorityLevel, Process } from "screepsOs/Process";
 import { Request, RequestType } from "./Request";
 import { Scheduler } from "screepsOs/Scheduler";
 import { CohortManager } from "./CohortManager";
-import { CreepStatus } from "prototypes/creep";
+import { CreepSpawnData, CreepStatus } from "prototypes/creep";
 import { HarvestEnergy } from "tasks/HarvestEnergy";
 import { StaticHarvestEnergy } from "tasks/StaticHarvestEnergy";
 import { DeliverEnergyToSpawn } from "tasks/DeliverEnergyToSpawn";
@@ -13,11 +13,13 @@ export class ImmunesManager extends Process {
     _class: string = ImmunesManager.name;
     roomName: string;
     requestsToCohort: Array<Request>;
+    requestsBeenProcessed: Array<Request>
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
         super(PPID, priority, generatePID);
         this.roomName = roomName;
         this.requestsToCohort = []
+        this.requestsBeenProcessed = []
     }
 
     private getRoom(): Room {
@@ -25,12 +27,15 @@ export class ImmunesManager extends Process {
     }
 
     private getCreeps() {
-        return _.filter(Game.creeps, creep => creep.memory.cohortRoomName == this.roomName);
+        let creeps = _.filter(Game.creeps, creep => creep.memory.cohortRoomName == this.roomName && !creep.spawning);
+        // console.log("getCreeps: " + JSON.stringify(creeps));
+        return creeps
     }
 
     private getCreepsIdle() {
         let creeps = this.getCreeps();
-        return _.filter(Game.creeps, creep => creep.memory.status !== CreepStatus.BUSY);
+        // console.log("getCreepsIddle: " + JSON.stringify(creeps));
+        return _.filter(creeps, creep => creep.memory.status !== CreepStatus.BUSY);
     }
 
     private getCreepsProcess(): Array<Process> {
@@ -145,9 +150,30 @@ export class ImmunesManager extends Process {
         this.requestsToCohort.push(request);
     }
 
-    // getRequests(): Array<Request> | null {
-    //     return this.requestsToCohort;
-    // }
+    getRequest(): Request | null {
+        return this.requestsToCohort.shift() || null;
+    }
+
+    newRequestBeenProcessed(request: Request){
+        this.requestsBeenProcessed.push(request);
+    }
+
+    checkRequestsBeenProcessed() {
+        if(this.requestsBeenProcessed.length === 0)
+            return
+
+        let requestsStillInProcess: Array<Request> = [];
+        _.forEach(this.requestsBeenProcessed, request => {
+            if(request.type === RequestType.SPAWN) {
+                if (this.getCreeps().map(creep => creep.name).includes((request.data as CreepSpawnData).name)){
+                    return
+                }
+            }
+            requestsStillInProcess.push(request);
+        });
+
+        this.requestsBeenProcessed = requestsStillInProcess;
+    }
 
     // resolveResquests(request: Request){
     //     // receive response from requests that were finished
@@ -177,7 +203,7 @@ export class ImmunesManager extends Process {
 
     private generateCreepInfo(taskType: string) {
         let name = "Immune" + Game.time;
-        let memory = {
+        let memory: CreepMemory = {
             cohortPID: this.PPID,
             cohortRoomName: this.roomName,
             lastTask: "",
@@ -220,8 +246,9 @@ export class ImmunesManager extends Process {
             totalWorkParts += workParts;
 
             if(cohortManager){
-                let index = _.findIndex(cohortManager.sourcesInfo, {sourceId: creepProcessAsAny.sourceId});
-                cohortManager.sourcesInfo[index].workPartsAssigned = workParts;
+                let index = _.findIndex(cohortManager.sourcesInfo, source => source.sourceId === creepProcessAsAny.sourceId);
+                if (index != -1)
+                    cohortManager.sourcesInfo[index].workPartsAssigned = workParts;
             }
 
             return creepProcessAsAny._class === StaticHarvestEnergy.name;
@@ -265,7 +292,7 @@ export class ImmunesManager extends Process {
         if(!cohortManager)
             return;
 
-        let spawnRequests = _.filter(this.requestsToCohort, request => request.type === RequestType.SPAWN);
+        let spawnRequests = _.filter(this.requestsBeenProcessed, request => request.type === RequestType.SPAWN);
 
         if (spawnRequests.length == 0)
             this.spawnImmunes(cohortManager);
@@ -274,5 +301,7 @@ export class ImmunesManager extends Process {
             this.assignTasks(cohortManager, creepsIdle);
 
         }
+
+        this.checkRequestsBeenProcessed();
     }
 }

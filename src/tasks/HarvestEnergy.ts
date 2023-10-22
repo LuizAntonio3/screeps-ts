@@ -5,13 +5,18 @@ export class HarvestEnergy extends Task {
 
     // task type
     _class: string = HarvestEnergy.name;
-    creepId: Id<Creep>;
-    sourceId: Id<Source>;
+    creepId: Id<Creep> | null;
+    sourceId: Id<Source> | null;
 
-    constructor(generatePID: boolean = false, PPID: string, priority: number, creepId: Id<Creep>, sourceId: Id<Source>) {
+    constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
         super(generatePID, PPID, priority);
         this.creepId = creepId;
         this.sourceId = sourceId;
+
+        if(creepId){
+            let creep = Game.getObjectById(creepId) as Creep; // better to put in task?
+            creep.memory.status = CreepStatus.BUSY;
+        }
     }
 
     harvestEnergy(creep: Creep, source: Source|null) {
@@ -47,6 +52,10 @@ export class HarvestEnergy extends Task {
     }
 
     run() {
+        if(!this.creepId || !this.sourceId){
+            return
+        }
+
         let creep = Game.getObjectById(this.creepId);
         let source = Game.getObjectById(this.sourceId);
 

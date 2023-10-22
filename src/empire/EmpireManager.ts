@@ -11,7 +11,7 @@ export class EmpireManager extends Process{
     requests: Array<Request>;
 
     constructor(generatePID: boolean = false) {
-        super(null, PriorityLevel.HIGH, generatePID);
+        super("", PriorityLevel.HIGH, generatePID);
         this.cohortsPID = [];
         this.requests = [];
     }

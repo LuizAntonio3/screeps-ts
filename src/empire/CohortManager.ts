@@ -1,6 +1,8 @@
 import { Process, PriorityLevel } from "screepsOs/Process";
-import { Request } from "./Request";
+import { Request, RequestType } from "./Request";
 import { ImmunesManager } from "./ImmunesManager";
+import { Scheduler } from "screepsOs/Scheduler";
+import { CreepSpawnData } from "prototypes/creep";
 
 class CenturysManager{} // war related
 
@@ -54,8 +56,6 @@ export class CohortManager extends Process{
                 }
             }
 
-
-
             this.updateExtensionsList();
         }
     }
@@ -77,49 +77,46 @@ export class CohortManager extends Process{
         return this.requestsToEmpire;
     }
 
-    // takeRequestsFromImmunes() {
-    //     if(!this.immunesManager)
-    //         return
+    takeRequestsFromImmunes() {
+        if(!this.immmunesManagerPID)
+            return
 
-    //     let immunesRequests = this.immunesManager.getRequests();
-    //     if(immunesRequests)
-    //         this.requests.concat(immunesRequests); // check if request key is already in place
-    // }
+        let immunesManager = Scheduler.getProcessByPID(this.immmunesManagerPID) as ImmunesManager;
+        if(!immunesManager){
+            this.immmunesManagerPID = null;
+            return
+        }
+
+        let request = immunesManager.getRequest();
+        if(!request)
+            return
+
+        // process request
+        if(request.type === RequestType.SPAWN){
+            let room = this.getRoom();
+            let freeSpawns = _.filter(room.find(FIND_MY_SPAWNS), spawn => spawn.spawning === null);
+
+            if (freeSpawns.length > 0){
+                let spawnRequest= request.data as CreepSpawnData;
+                let spawnRequestResponse = freeSpawns[0].spawnCreep(spawnRequest.body, spawnRequest.name, {memory: spawnRequest.memory});
+
+                // check different reponses
+                if(spawnRequestResponse == OK)
+                    immunesManager.newRequestBeenProcessed(request);
+            }
+        }
+    }
 
     // resolveImmunesRequest(request: Request) {
     //     this.immunesManager.resolveResquests(request);
     // }
 
-    // takeRequestsFromRemoteImmunes() {
-    //     // same as immunes
-    // }
-
-    // takeRequestsFromCenturys() {
-    //     // same as immunes
-    // }
-
-    // processRequests() {
-    //     if(this.requests.length == 0)
-    //         return;
-
-    //     for(let request of this.requests){
-    //         switch (request.type) {
-    //             case "spawn":
-
-    //                 break;
-    //         }
-    //     }
-
-    //     // process requests
-    // }
-
     run() {
-        console.log("running");
         // decides when to call the tower manager
         // decides when to call the century manager
         // deals with building logic
 
-        // this.takeRequestsFromImmunes();
+        this.takeRequestsFromImmunes();
         // this.processRequests();
     }
 }

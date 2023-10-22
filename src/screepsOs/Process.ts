@@ -16,12 +16,12 @@ export class Process {
 
     private _status: ProcessStatus; // TODO: verify status and generate stopped process - possible in run
     private _PID: string;
-    private _PPID: string | null;
+    private _PPID: string;
     private _priority: number;
     private _currentPriority: number;
     // TODO: ADD mean tick usage for the last 5 ticks so that the kernel can use as estimative
 
-    constructor(PPID: string | null, priority: number, generatePID: boolean) {
+    constructor(PPID: string, priority: number, generatePID: boolean) {
         if(generatePID){
             this._PID = Process.generatePID();
             Scheduler.addNewProcess(this);
@@ -54,11 +54,11 @@ export class Process {
         this._PID = PID;
     }
 
-    get PPID(): string | null {
+    get PPID(): string {
         return this._PPID;
     }
 
-    set PPID(PIID: string | null) {
+    set PPID(PIID: string) {
         this._PPID = PIID;
     }
 

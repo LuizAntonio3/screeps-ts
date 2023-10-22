@@ -11,6 +11,12 @@ declare global {
     }
 }
 
+export interface CreepSpawnData {
+    name: string;
+    body: Array<BodyPartConstant>;
+    memory: CreepMemory;
+}
+
 export enum CreepStatus {
     BUSY,
     ENERGY_FULL,

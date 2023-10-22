@@ -10,6 +10,7 @@ export class ScreepsSerializer{
         let processTableRetrieved: Array<Process> = [];
 
         try{
+            console.log(Memory.processTable);
             let jsonProcessTable: Array<any> = JSON.parse(Memory.processTable);
 
             for(let processJson of jsonProcessTable){
