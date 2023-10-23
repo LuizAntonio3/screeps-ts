@@ -1,10 +1,10 @@
 import { CreepStatus } from "prototypes/creep";
 import { Task } from "./Task";
 
-export class StaticHarvestEnergy extends Task {
+export class MineEnergy extends Task {
 
     // task type
-    _class: string = StaticHarvestEnergy.name;
+    _class: string = MineEnergy.name;
     creepId: Id<Creep> | null;
     sourceId: Id<Source> | null;
 

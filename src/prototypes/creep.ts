@@ -2,12 +2,15 @@ declare global {
     interface CreepMemory {
         cohortPID: string;
         cohortRoomName: string;
+        type: CreepType;
         lastTask: string;
         status: CreepStatus;
     }
 
     interface Creep {
         isAlive(): boolean;
+        generateWorkerBody(): Array<BodyPartConstant>;
+        generateMinerBody(): Array<BodyPartConstant>;
     }
 }
 
@@ -15,12 +18,18 @@ export interface CreepSpawnData {
     name: string;
     body: Array<BodyPartConstant>;
     memory: CreepMemory;
-}
+};
 
 export enum CreepStatus {
     BUSY,
     ENERGY_FULL,
     IDLE
+};
+
+export enum CreepType {
+    WORKER,
+    MINER,
+    HAULER
 };
 
 // can improve this to raise reason of death - NATURAL/KILLED
@@ -30,4 +39,13 @@ Creep.prototype.isAlive = function () {
         return false;
     else
         return true;
+}
+
+Creep.prototype.generateWorkerBody = function () {
+    return [];
+}
+
+
+Creep.prototype.generateMinerBody = function () {
+    return [];
 }

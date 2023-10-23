@@ -11,6 +11,7 @@ interface SourceInfo {
     availableSpots: number;
     creepsAmountAssigned: number;
     workPartsAssigned: number;
+    energyNearby: number;
 }
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
@@ -49,7 +50,8 @@ export class CohortManager extends Process{
                         sourceId: source.id,
                         availableSpots: room.findFreeSpotsAroundSource(source),
                         creepsAmountAssigned: 0,
-                        workPartsAssigned: 0
+                        workPartsAssigned: 0,
+                        energyNearby: 0
                     };
 
                     this.sourcesInfo.push(sourceInfo);
