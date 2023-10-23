@@ -1,4 +1,5 @@
 import { Scheduler } from "./Scheduler";
+import { ProcessStatus } from "./Process";
 
 export class Kernel {
     maxUsageCPU: number;
@@ -7,16 +8,19 @@ export class Kernel {
         this.maxUsageCPU = maxUsageCPU;
     }
 
-    public tick() {
+    tick() {
         while (Game.cpu.getUsed() < this.maxUsageCPU) {
+            let beforeProcessCpuUsage = Game.cpu.getUsed();
             let cpuAvailable = this.maxUsageCPU - Game.cpu.getUsed();
+
             let process = Scheduler.getProcess(cpuAvailable);
 
-            if (!process)
+            if (!process || process.status == ProcessStatus.STOPPED)
                 break;
 
             try{
                 process.run();
+                process.updateMeanCpuUsage(beforeProcessCpuUsage, Game.cpu.getUsed());
             }
             catch(e){
                 console.log(`PROCESS: ${process} - EXECUTED WITH ERROR: ${e}`);

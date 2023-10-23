@@ -23,7 +23,7 @@ export class ScreepsSerializer{
             }
         }
         catch(e){
-            console.log(e);
+            console.log(`DESERIALIZE ERROR: ${e}`);
         }
 
         return processTableRetrieved;

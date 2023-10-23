@@ -13,7 +13,7 @@ export class ImmunesManager extends Process {
     _class: string = ImmunesManager.name;
     roomName: string;
     requestsToCohort: Array<Request>;
-    requestsBeenProcessed: Array<Request>
+    requestsBeenProcessed: Array<Request>;
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
         super(PPID, priority, generatePID);
@@ -99,7 +99,8 @@ export class ImmunesManager extends Process {
             cohortPID: this.PPID,
             cohortRoomName: this.roomName,
             lastTask: "",
-            status: CreepStatus.IDLE
+            status: CreepStatus.IDLE,
+            type: CreepType.MINER
         }
         let body = [];
 
@@ -176,6 +177,11 @@ export class ImmunesManager extends Process {
         //     let data = this.generateCreepInfo(HarvestEnergy.name);
         //     let spawnRequest = new Request(RequestType.SPAWN, data);
         //     this.makeRequest(spawnRequest);
+        // spawn
+        if (creeps.length < 1) {
+            let data = this.generateCreepInfo(HarvestEnergy.name);
+            let spawnRequest = new Request(this._class, this.PID, RequestType.SPAWN, data);
+            this.makeRequest(spawnRequest);
 
         //     return
         // }
@@ -183,6 +189,12 @@ export class ImmunesManager extends Process {
         //     let data = this.generateCreepInfo(MineEnergy.name);
         //     let spawnRequest = new Request(RequestType.SPAWN, data);
         //     this.makeRequest(spawnRequest);
+            return
+        }
+        else if (staticMinersProcess.length < freeSpotsInAllSources && totalWorkParts < 5 * cohortManager.sourcesInfo.length){
+            let data = this.generateCreepInfo(StaticHarvestEnergy.name);
+            let spawnRequest = new Request(this._class, this.PID, RequestType.SPAWN, data);
+            this.makeRequest(spawnRequest);
 
         //     return
         // }
@@ -191,6 +203,13 @@ export class ImmunesManager extends Process {
         //     let data = this.generateCreepInfo(HarvestEnergy.name);
         //     let spawnRequest = new Request(RequestType.SPAWN, data);
         //     this.makeRequest(spawnRequest);
+            return
+        }
+        else {
+            // spawn worker
+            let data = this.generateCreepInfo(HarvestEnergy.name);
+            let spawnRequest = new Request(this._class, this.PID, RequestType.SPAWN, data);
+            this.makeRequest(spawnRequest);
 
         //     return
         // }

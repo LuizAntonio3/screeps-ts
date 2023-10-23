@@ -4,6 +4,7 @@ import { ScreepsSerializer } from "./Serializer";
 export class Scheduler {
     static processTable: Array<Process> = [];
     static executedProcessTable: Array<Process>;
+    static skippedProcessTable: Array<Process>;
 
     constructor() {
         let processTable = ScreepsSerializer.deserializeFromMemory();
@@ -13,6 +14,7 @@ export class Scheduler {
 
         Scheduler.organizeTable();
         Scheduler.executedProcessTable = [];
+        Scheduler.skippedProcessTable = [];
     }
 
     static resetArrays() {
@@ -20,7 +22,7 @@ export class Scheduler {
     }
 
     static getCompleteProcessTable(): Array<Process> {
-        return Scheduler.processTable.concat(Scheduler.executedProcessTable)
+        return Scheduler.processTable.concat(Scheduler.executedProcessTable, this.skippedProcessTable)
     }
 
     static rebuildProcessTable(processArray: Array<Process>){
@@ -41,14 +43,20 @@ export class Scheduler {
     }
 
     static getProcess(maxCPU: number): Process | null {
-        // TODO: return a process that is below the maxCPU usage to the kernel to run
-        let process = Scheduler.processTable.shift();
-        if (!process) {
-            return null;
-        }
+        while(true) {
+            let process = Scheduler.processTable.shift();
+            if (!process) {
+                return null;
+            }
 
-        Scheduler.executedProcessTable.push(process);
-        return process;
+            if (process.meanCpuUse > maxCPU) {
+                this.skippedProcessTable.push(process);
+                continue
+            }
+
+            Scheduler.executedProcessTable.push(process);
+            return process;
+        }
     }
 
     static organizeTable() {
@@ -58,10 +66,11 @@ export class Scheduler {
     static increasePriority() {
         // TODO: takes flags from its parent process to check the correct amount of increase
         let amount = 1;
+        this.rebuildProcessTable(Scheduler.skippedProcessTable);
         _.forEach(Scheduler.processTable, process => process.increaseCurrentPriority(amount));
     }
 
-    static addBackProcess() {
+    static addBackExecutedProcess() {
         _.remove(Scheduler.executedProcessTable, process => {
             if(process.status == ProcessStatus.RUNNING){
                 process.resetPriority();
@@ -75,12 +84,11 @@ export class Scheduler {
             Scheduler.rebuildProcessTable(Scheduler.executedProcessTable);
             Scheduler.executedProcessTable = [];
         }
-
     }
 
     endOfTick() {
         Scheduler.increasePriority();
-        Scheduler.addBackProcess();
+        Scheduler.addBackExecutedProcess();
         ScreepsSerializer.serializeToMemory(Scheduler.processTable);
         Scheduler.resetArrays();
     }
