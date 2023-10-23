@@ -3,8 +3,7 @@ import { Request, RequestType } from "./Request";
 import { ImmunesManager } from "./ImmunesManager";
 import { Scheduler } from "screepsOs/Scheduler";
 import { CreepSpawnData } from "prototypes/creep";
-
-class CenturysManager{} // war related
+import { CenturysManager } from "./CenturysManager";
 
 interface SourceInfo {
     sourceId: Id<Source>;
@@ -14,49 +13,51 @@ interface SourceInfo {
 }
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
-export class CohortManager extends Process{
+export class CohortManager extends Process {
     _class: string = CohortManager.name;
     roomName: string;
     immmunesManagerPID: string | null;
-    centurysManager: CenturysManager | null;
-    requestsToEmpire: Array<Request>;
+    centurysManagerPID: string | null;
     sourcesInfo: Array<SourceInfo>;
-    extensions: Array<Id<StructureSpawn|StructureExtension>>;
-    // requests: Array<Request>;
-    // requestsBeenExecuted: Array<Request>;
+    extensions: Array<Id<StructureSpawn | StructureExtension>>;
+    requestsToEmpire: Array<Request>;
+    requestsBeenProcessed: Array<Request>;
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
         super(PPID, priority, generatePID);
         this.roomName = roomName;
         this.immmunesManagerPID = null;
-        this.centurysManager = null;
-        this.requestsToEmpire = [];
+        this.centurysManagerPID = null;
         this.sourcesInfo = [];
         this.extensions = [];
-        // this.requests = [];
-        // this.requestsBeenExecuted = []
+        this.requestsToEmpire = [];
+        this.requestsBeenProcessed = [];
 
-        if (generatePID && !this.immmunesManagerPID){
+        if (generatePID && !this.immmunesManagerPID) {
             let newImmunesManager = new ImmunesManager(true, this.PID, PriorityLevel.DEFAULT, this.roomName); // this one will always exist
             this.immmunesManagerPID = newImmunesManager.PID;
-            let room = this.getRoom();
 
-            let sources = room.findEnergySources();
-
-            if (sources.length > 0){
-                for (let source of sources){
-                    let sourceInfo: SourceInfo = { // bug
-                        sourceId: source.id,
-                        availableSpots: room.findFreeSpotsAroundSource(source),
-                        creepsAmountAssigned: 0,
-                        workPartsAssigned: 0
-                    };
-
-                    this.sourcesInfo.push(sourceInfo);
-                }
-            }
-
+            this.updateEnergySourcesInfo();
             this.updateExtensionsList();
+        }
+    }
+
+    private updateEnergySourcesInfo() {
+        let room = this.getRoom();
+
+        let sources = room.findEnergySources();
+
+        if (sources.length > 0) {
+            for (let source of sources) {
+                let sourceInfo: SourceInfo = { // bug -> do not rebember what is this bug
+                    sourceId: source.id,
+                    availableSpots: room.findFreeSpotsAroundSource(source),
+                    creepsAmountAssigned: 0,
+                    workPartsAssigned: 0
+                };
+
+                this.sourcesInfo.push(sourceInfo);
+            }
         }
     }
 
@@ -68,41 +69,95 @@ export class CohortManager extends Process{
         return Game.rooms[this.roomName];
     }
 
+    private getImmunesManager(): ImmunesManager | null {
+        if(!this.immmunesManagerPID)
+            return null
+
+        let immunesManager = Scheduler.getProcessByPID(this.immmunesManagerPID);
+        if (!immunesManager) {
+            this.immmunesManagerPID = null;
+            return null;
+        }
+
+        return immunesManager as ImmunesManager;
+    }
+
+    private getCenturysManager(): CenturysManager | null {
+        if(!this.centurysManagerPID)
+            return null
+
+        let centurysManager = Scheduler.getProcessByPID(this.centurysManagerPID);
+        if (!centurysManager) {
+            this.centurysManagerPID = null;
+            return null
+        }
+
+        return centurysManager as CenturysManager;
+    }
+
     private makeRequest(request: Request) {
         this.requestsToEmpire.push(request);
     }
 
-    getRequests(): Array<Request>|null {
+    private checkRequestsBeenProcessed() {
+        // TODO
+    }
+
+    getRequests(): Array<Request> | null {
         // should return a single or list of requests?
         return this.requestsToEmpire;
     }
 
-    takeRequestsFromImmunes() {
-        if(!this.immmunesManagerPID)
+    takeRequests(): Array<Request> {
+        let immunesManager = this.getImmunesManager();
+        let centurysManager = this.getCenturysManager();
+
+        let immunesRequest = immunesManager?.getRequest();
+        let centurysRequest = centurysManager?.getRequest();
+
+        if(!immunesManager || (!immunesRequest && !centurysRequest))
+            return []
+
+        let requests = Array<Request>();
+
+        // TODO: check priority of request to be executed
+        if (immunesRequest)
+            requests.push(immunesRequest as Request);
+        if (centurysRequest)
+            requests.push(centurysRequest as Request);
+
+        // TODO: check if this is the best strategy
+        _.sortBy(requests, (request) => Scheduler.getProcessByPID(request.requesterPID)?.currentPriority);
+
+        return requests
+    }
+
+    processRequest(requests: Array<Request>) {
+
+        if(requests.length == 0)
             return
 
-        let immunesManager = Scheduler.getProcessByPID(this.immmunesManagerPID) as ImmunesManager;
-        if(!immunesManager){
-            this.immmunesManagerPID = null;
-            return
-        }
+        let request = requests.shift() as Request; // TODO: iterate over all requests
 
-        let request = immunesManager.getRequest();
-        if(!request)
-            return
-
-        // process request
-        if(request.type === RequestType.SPAWN){
+        if (request.type === RequestType.SPAWN) {
             let room = this.getRoom();
             let freeSpawns = _.filter(room.find(FIND_MY_SPAWNS), spawn => spawn.spawning === null);
 
-            if (freeSpawns.length > 0){
-                let spawnRequest= request.data as CreepSpawnData;
-                let spawnRequestResponse = freeSpawns[0].spawnCreep(spawnRequest.body, spawnRequest.name, {memory: spawnRequest.memory});
+            if (freeSpawns.length > 0) {
+                let spawnRequest = request.data as CreepSpawnData;
+                let spawnRequestResponse = freeSpawns[0].spawnCreep(spawnRequest.body, spawnRequest.name, { memory: spawnRequest.memory });
 
                 // check different reponses
-                if(spawnRequestResponse == OK)
-                    immunesManager.newRequestBeenProcessed(request);
+                if (spawnRequestResponse == OK){
+                    if (request.requesterName == ImmunesManager.name){
+                        let immunesManager = this.getImmunesManager() as ImmunesManager;
+                        immunesManager.newRequestBeenProcessed(request);
+                    }
+                    else if (request.requesterName == CenturysManager.name){
+                        let centurysManager = this.getCenturysManager() as CenturysManager;
+                        centurysManager.newRequestBeenProcessed(request);
+                    }
+                }
             }
         }
     }
@@ -116,7 +171,7 @@ export class CohortManager extends Process{
         // decides when to call the century manager
         // deals with building logic
 
-        this.takeRequestsFromImmunes();
-        // this.processRequests();
+        let requests = this.takeRequests();
+        this.processRequest(requests);
     }
 }

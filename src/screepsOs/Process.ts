@@ -12,78 +12,57 @@ export enum PriorityLevel {
 }
 
 export class Process {
+    static ticksToAverage: number = 5;
     static tickPIDNumerator: number = 0;
 
-    private _status: ProcessStatus; // TODO: verify status and generate stopped process - possible in run
-    private _PID: string;
-    private _PPID: string;
-    private _priority: number;
-    private _currentPriority: number;
-    // TODO: ADD mean tick usage for the last 5 ticks so that the kernel can use as estimative
+    status: ProcessStatus;
+    PID: string;
+    PPID: string;
+    priority: number;
+    currentPriority: number;
+    meanCpuUse: number = 0;
+    private lastCpuUsages: Array<number> = [];
 
     constructor(PPID: string, priority: number, generatePID: boolean) {
         if(generatePID){
-            this._PID = Process.generatePID();
+            this.PID = Process.generatePID();
             Scheduler.addNewProcess(this);
         }
         else
-            this._PID = "";
-        this._PPID = PPID;
-        this._priority = priority;
-        this._currentPriority = priority;
-        this._status = ProcessStatus.RUNNING;
+            this.PID = "";
+        this.PPID = PPID;
+        this.priority = priority;
+        this.currentPriority = priority;
+        this.status = ProcessStatus.RUNNING;
+    }
+
+    updateMeanCpuUsage(startTickTime: number, endTickTime: number) {
+        if(this.status == ProcessStatus.STOPPED)
+            return
+
+        let cpuUse = endTickTime - startTickTime;
+
+        if(this.lastCpuUsages.length >= Process.ticksToAverage)
+            this.lastCpuUsages.shift();
+
+        this.lastCpuUsages.push(cpuUse);
+        this.meanCpuUse = this.lastCpuUsages.reduce((a, b) => a+b, 0) / this.lastCpuUsages.length;
     }
 
     run() {
         // to get overwriten
     }
 
-    get status(): ProcessStatus {
-        return this._status;
-    }
-
     killProcess() {
-        this._status = ProcessStatus.STOPPED
-    }
-
-    get PID(): string {
-        return this._PID;
-    }
-
-    set PID(PID: string) {
-        this._PID = PID;
-    }
-
-    get PPID(): string {
-        return this._PPID;
-    }
-
-    set PPID(PIID: string) {
-        this._PPID = PIID;
-    }
-
-    get priority() {
-        return this._priority;
-    }
-
-    set priority(priority: number) {
-        this._priority = priority;
-    }
-
-    get currentPriority(): number {
-        return this._currentPriority;
-    }
-
-    set currentPriority(priority) {
-        this._priority = priority;
+        this.status = ProcessStatus.STOPPED;
     }
 
     increaseCurrentPriority(increment: number) {
-        this._currentPriority += increment;
+        this.currentPriority += increment;
     }
 
     resetPriority() {
-        this._currentPriority = this._priority;
+        this.currentPriority = this.priority;
     }
 
     static generatePID(): string {

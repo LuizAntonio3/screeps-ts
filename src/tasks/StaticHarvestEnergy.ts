@@ -8,7 +8,6 @@ export class StaticHarvestEnergy extends Task {
     creepId: Id<Creep> | null;
     sourceId: Id<Source> | null;
 
-    // put default values
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
         super(generatePID, PPID, priority);
         this.creepId = creepId;

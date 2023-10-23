@@ -1,7 +1,7 @@
-import { EmpireManager } from "empire/EmpireManager";
+import { ErrorMapper } from "utils/ErrorMapper";
 import { Kernel } from "screepsOs/Kernel";
 import { Scheduler } from "screepsOs/Scheduler";
-import { ErrorMapper } from "utils/ErrorMapper";
+import { EmpireManager } from "empire/EmpireManager";
 
 import "prototypes/creep"
 import "prototypes/room"
