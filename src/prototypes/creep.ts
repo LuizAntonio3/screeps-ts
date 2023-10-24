@@ -9,8 +9,6 @@ declare global {
 
     interface Creep {
         isAlive(): boolean;
-        generateWorkerBody(): Array<BodyPartConstant>;
-        generateMinerBody(): Array<BodyPartConstant>;
     }
 }
 
@@ -39,13 +37,4 @@ Creep.prototype.isAlive = function () {
         return false;
     else
         return true;
-}
-
-Creep.prototype.generateWorkerBody = function () {
-    return [];
-}
-
-
-Creep.prototype.generateMinerBody = function () {
-    return [];
 }

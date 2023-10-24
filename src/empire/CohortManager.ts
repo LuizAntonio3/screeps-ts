@@ -8,9 +8,14 @@ import { CenturysManager } from "./CenturysManager";
 interface SourceInfo {
     sourceId: Id<Source>;
     availableSpots: number;
-    creepsAmountAssigned: number;
+    spotsAssigned: number;
     workPartsAssigned: number;
-    energyNearby: number;
+    energyStoredNearby: number;
+}
+
+interface StrutureInfo {
+    structureId: Id<StructureSpawn | StructureExtension>,
+    energyBeenDelivered: number
 }
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
@@ -20,7 +25,7 @@ export class CohortManager extends Process {
     immmunesManagerPID: string | null;
     centurysManagerPID: string | null;
     sourcesInfo: Array<SourceInfo>;
-    extensions: Array<Id<StructureSpawn | StructureExtension>>;
+    spawnsAndExtensions: Array<StrutureInfo>;
     requestsToEmpire: Array<Request>;
     requestsBeenProcessed: Array<Request>;
 
@@ -30,7 +35,7 @@ export class CohortManager extends Process {
         this.immmunesManagerPID = null;
         this.centurysManagerPID = null;
         this.sourcesInfo = [];
-        this.extensions = [];
+        this.spawnsAndExtensions = [];
         this.requestsToEmpire = [];
         this.requestsBeenProcessed = [];
 
@@ -53,9 +58,9 @@ export class CohortManager extends Process {
                 let sourceInfo: SourceInfo = { // bug -> do not rebember what is this bug
                     sourceId: source.id,
                     availableSpots: room.findFreeSpotsAroundSource(source),
-                    creepsAmountAssigned: 0,
+                    spotsAssigned: 0,
                     workPartsAssigned: 0,
-                    energyNearby: 0
+                    energyStoredNearby: 0
                 };
 
                 this.sourcesInfo.push(sourceInfo);
@@ -64,7 +69,22 @@ export class CohortManager extends Process {
     }
 
     private updateExtensionsList() {
-        // TODO: recheck extensions id and list - called when id is not found or extension is built
+        let structures: any = this.getRoom().find(FIND_STRUCTURES).filter(structure => {
+            return structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN
+        });
+
+        this.spawnsAndExtensions = [];
+
+        if (structures.length > 0) {
+            for (let structure of structures) {
+                let structureInfo: StrutureInfo = {
+                    structureId: structure.id,
+                    energyBeenDelivered: 0
+                }
+
+                this.spawnsAndExtensions.push(structureInfo);
+            }
+        }
     }
 
     private getRoom(): Room {

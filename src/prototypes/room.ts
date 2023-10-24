@@ -5,7 +5,18 @@ declare global {
         findEnergySources(): Array<Source>;
         findFreeSpotsAroundObject(object: Structure | Source): Array<Array<number>>;
         findFreeSpotsAroundSource(source: Source): number;
+        generateBody(workerBodyTemplate: Array<BodyPartTemplate>): Array<BodyPartConstant>;
+        generateWorkerBody(firstWorker: boolean): Array<BodyPartConstant>;
+        generateMinerBody(withCarry: boolean): Array<BodyPartConstant>;
+        generateHaulerBody(): Array<BodyPartConstant>;
     }
+}
+
+interface BodyPartTemplate {
+    type: BodyPartConstant,
+    min: number,
+    max: number,
+    ratio: number
 }
 
 Room.prototype.findEnergySources = function findEnergySources() {
@@ -46,6 +57,57 @@ Room.prototype.findFreeSpotsAroundSource = function (source: Source) {
     return numberFreeSpots;
 }
 
+Room.prototype.generateBody = function createBody(template: Array<BodyPartTemplate>) {
+    let energyCapacityAvailable = this.energyCapacityAvailable;
+
+    let body: Array<BodyPartConstant> = [];
+
+    for (let part of template) {
+        let partAmount = Math.floor(energyCapacityAvailable * part.ratio / BODYPART_COST[part.type]);
+
+        if (partAmount > part.max)
+            partAmount = part.max;
+        else if (partAmount < part.min)
+            partAmount = part.min;
+
+        for (let i = 0; i < partAmount; i++) {
+            body.push(part.type);
+        }
+    }
+
+    return body;
+}
+
+Room.prototype.generateWorkerBody = function (firstWorker: boolean = false) {
+    let workerBodyTemplate: Array<BodyPartTemplate> = [
+        {type: WORK, min: 1, max: firstWorker? 1 : 10, ratio: 1/5},
+        {type: CARRY, min: 1, max: firstWorker? 1 : 30, ratio: 3/5},
+        {type: MOVE, min: 1, max: firstWorker? 1 : 10, ratio: 1/5}
+    ];
+
+    return this.generateBody(workerBodyTemplate)
+}
+
+Room.prototype.generateMinerBody = function (withCarry: boolean = false) {
+    let workerBodyTemplate: Array<BodyPartTemplate> = [
+        {type: WORK, min: 1, max: 5, ratio: withCarry? 5/8 : 5/6},
+        {type: CARRY, min: 0, max: withCarry? 2 : 0, ratio: withCarry? 2/8 : 0},
+        {type: MOVE, min: 1, max: 1, ratio: withCarry? 1/8 : 1/5}
+    ];
+
+    return this.generateBody(workerBodyTemplate)
+}
+
+Room.prototype.generateHaulerBody = function () {
+    let workerBodyTemplate: Array<BodyPartTemplate> = [
+        {type: CARRY, min: 1, max: 20, ratio: 2/3},
+        {type: MOVE, min: 1, max: 10, ratio: 1/3}
+    ];
+
+    return this.generateBody(workerBodyTemplate)
+}
+
+
 // Room.prototype.findMineralSources = function findMineralSources() {
 //     let mineralSources = this.find(FIND_MINERALS).map(sourceObj => sourceObj.id);
 //     this.memory.mineralSources = mineralSources;
@@ -74,66 +136,3 @@ Room.prototype.findFreeSpotsAroundSource = function (source: Source) {
 //     return freeSources
 // }
 
-
-// Room.prototype.createBody = function createBody(energy, bodyTemplate, maxSize = 50) {
-//     let body = [];
-//     let consumedEnergy = 0;
-
-//     for (let bodyPart in bodyTemplate) {
-//         let amount = Math.round(energy * bodyTemplate[bodyPart] / BODYPART_COST[bodyPart]);
-//         let maxAmount = Math.floor(maxSize * bodyTemplate[bodyPart]);
-
-//         if (amount > maxAmount)
-//             amount = maxAmount;
-
-//         for (let i = 0; i < amount; i++) {
-//             body.push(bodyPart);
-//             consumedEnergy += BODYPART_COST[bodyPart];
-//         }
-//     }
-
-//     // in test changed to remove 1 work part a time
-//     while (consumedEnergy > this.energyCapacityAvailable) {
-//         let remBodyPart = body.shift();
-//         consumedEnergy -= BODYPART_COST[remBodyPart];
-//     }
-
-//     // console.log(JSON.stringify(body));
-//     return body;
-// }
-
-// Room.prototype.createWorkerWody = function createWorkerWody() {
-//     let energy = .6 * this.energyCapacityAvailable;
-//     const bodyTemplate = { "work": .55, "move": .275, "carry": .275 };
-
-//     let harvesters = _.filter(Game.creeps, (creep) => creep.memory.role == 'harvester' && creep.room.name == this.name);
-//     if (!harvesters.length) {
-//         energy = this.energyAvailable;
-//         if (energy < 300)
-//             energy = 300; // min body
-//         return this.createBody(energy, bodyTemplate) // bug in here: when there is no harvester in high rcl it always use this
-//     }
-
-//     return this.createBody(energy, bodyTemplate)
-// }
-
-// Room.prototype.createMinerBody = function createMinerBody() {
-//     let energy = 1 * this.energyCapacityAvailable;
-//     const bodyTemplate = { "work": .5, "move": .5 };
-
-//     return this.createBody(energy, bodyTemplate, 10); // verify if this limite is needed
-// }
-
-// Room.prototype.createRemoteBody = function createRemoteBody() {
-//     let energy = .75 * this.energyCapacityAvailable;
-//     const bodyTemplate = { "work": .15, "move": .45, "carry": .4 };
-
-//     return this.createBody(energy, bodyTemplate, 25); // verify if this limite is needed
-// }
-
-// Room.prototype.createHaulerBody = function createHaulerBody() {
-//     let energy = .75 * this.energyCapacityAvailable;
-//     const bodyTemplate = { "move": .5, "carry": .5 };
-
-//     return this.createBody(energy, bodyTemplate, 30); // verify if this limite is needed
-// }

@@ -55,6 +55,7 @@ export class Process {
 
     killProcess() {
         this.status = ProcessStatus.STOPPED;
+        // kill all child process
     }
 
     increaseCurrentPriority(increment: number) {
