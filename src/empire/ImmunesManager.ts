@@ -74,6 +74,7 @@ export class ImmunesManager extends Process {
     private assignTasks(cohortManager: CohortManager, creepsIdle: Array<Creep>){
         let creepsEmptyOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.IDLE);
         let creepsFullOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.ENERGY_FULL);
+        let miners = this.getMinersProcess(cohortManager);
         // check if spawn needs energy -> worker or hauler carries energy to it -> keep track of energy been delivered
 
         if (creepsFullOfEnergy.length > 0) {
@@ -91,14 +92,30 @@ export class ImmunesManager extends Process {
         }
 
         if (creepsEmptyOfEnergy.length > 0) {
+            let sourceIndex = 0;
             for(let creep of creepsEmptyOfEnergy){
-                let source = cohortManager.sourcesInfo[0].sourceId; // hard coded for test TODO: improve it
-                // assign creeps to different sources and free source spot when creep gets away
-
                 if (creep.memory.type === CreepType.MINER) {
-                    let newProcess = new MineEnergy(true, this.PID, PriorityLevel.HIGH, creep.id, source);
+                    // find source not assigned
+                    let sourcesNotAssigned = cohortManager.sourcesInfo.filter(source => !miners.find(miner => miner.sourceId === source.sourceId));
+
+                    if (sourcesNotAssigned.length > 0) {
+                        let source = sourcesNotAssigned[0];
+                        ------ stopped in this ASSIGN_TASKS
+                        let newProcess = new MineEnergy(true, this.PID, PriorityLevel.HIGH, creep.id, source);
+                    }
+
                 }
-                else if (creep.memory.type === CreepType.HAULER) {
+
+                // // assign creeps to different sources and free source spot when creep gets away
+                // while (sourceIndex < cohortManager.sourcesInfo.length) {
+                //     if (cohortManager.sourcesInfo[0].spotsAssigned < cohortManager.sourcesInfo[0].availableSpots)
+                //         break
+                // }
+
+                // if (sourceAvailable.length === 0)
+                //     break
+
+                if (creep.memory.type === CreepType.HAULER) {
                     // hauler energy from a target
                     // assign a miner storage / miner energy dropped - if not assign nothing - just skip
                     let source = cohortManager.sourcesInfo
@@ -146,7 +163,7 @@ export class ImmunesManager extends Process {
         return {body, name, memory}
     }
 
-    private filterMinersProcess(cohortManager: CohortManager): Array<MineEnergy> {
+    private getMinersProcess(cohortManager: CohortManager): Array<MineEnergy> {
         let totalWorkParts = 0;
         let result = _.filter(this.getCreepsProcess(), creepProcess => {
             let creepProcessAsAny = creepProcess as any;
