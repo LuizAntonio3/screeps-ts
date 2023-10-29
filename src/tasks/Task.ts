@@ -1,20 +1,34 @@
+import { CohortManager } from "empire/CohortManager";
+import { ImmunesManager } from "empire/ImmunesManager";
+import { CreepStatus } from "prototypes/creep";
 import { Process } from "screepsOs/Process";
+import { Scheduler } from "screepsOs/Scheduler";
 
 export class Task extends Process {
 
-    // check need for this class
-    constructor(generatePID: boolean = false, PPID: string, priority: number) {
+    creepId: Id<Creep> | null = null;
+
+    constructor(creepId: Id<Creep> | null = null, generatePID: boolean = false, PPID: string, priority: number) {
         super(PPID, priority, generatePID);
+        this.creepId = creepId;
+
+        this.setCreepAsBusy();
     }
 
-    checkCreepAlive(creep: Creep): boolean {
-        if (!creep.isAlive) {
-            console.log(`creep does not exist any longer - killing process ${this.PID}`);
-            this.killProcess();
-            return false;
-        }
+    getCohortManager(): CohortManager | null {
+        let immunesManager = Scheduler.getProcessByPID(this.PPID) as ImmunesManager | null;
 
-        return true;
+        if (!immunesManager)
+            return null
+
+        return Scheduler.getProcessByPID(immunesManager.PPID) as CohortManager | null;
+    }
+
+    setCreepAsBusy() {
+        if (this.creepId){
+            let creep = Game.getObjectById(this.creepId) as Creep; // better to put in task?
+            creep.memory.status = CreepStatus.BUSY;
+        }
     }
 
     run() {

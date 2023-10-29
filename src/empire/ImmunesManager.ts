@@ -50,18 +50,18 @@ export class ImmunesManager extends Process {
         return this.requestsToCohort.shift() || null;
     }
 
-    newRequestBeenProcessed(request: Request){
+    newRequestBeenProcessed(request: Request) {
         this.requestsBeenProcessed.push(request);
     }
 
     checkRequestsBeenProcessed() {
-        if(this.requestsBeenProcessed.length === 0)
+        if (this.requestsBeenProcessed.length === 0)
             return
 
         let requestsStillInProcess: Array<Request> = [];
         _.forEach(this.requestsBeenProcessed, request => {
-            if(request.type === RequestType.SPAWN) {
-                if (this.getCreeps().map(creep => creep.name).includes((request.data as CreepSpawnData).name)){
+            if (request.type === RequestType.SPAWN) {
+                if (this.getCreeps().map(creep => creep.name).includes((request.data as CreepSpawnData).name)) {
                     return
                 }
             }
@@ -71,59 +71,65 @@ export class ImmunesManager extends Process {
         this.requestsBeenProcessed = requestsStillInProcess;
     }
 
-    private assignTasks(cohortManager: CohortManager, creepsIdle: Array<Creep>){
-        let creepsEmptyOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.IDLE);
-        let creepsFullOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.ENERGY_FULL);
-        let miners = this.getMinersProcess(cohortManager);
-        // check if spawn needs energy -> worker or hauler carries energy to it -> keep track of energy been delivered
+    private assignTasks(cohortManager: CohortManager, creepsIdle: Array<Creep>) {
+        let creepsTrulyIdle = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.IDLE);
+        let workersFullOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.ENERGY_FULL);
 
-        if (creepsFullOfEnergy.length > 0) {
+        if (workersFullOfEnergy.length > 0) {
             // WORKER WITH ENERGY
             // HAULER WITH ENERGY
-            for(let creep of creepsFullOfEnergy){
+            for (let creep of workersFullOfEnergy) {
                 if (creep.memory.type === CreepType.WORKER) {
                     // ASSIGN BUILD, REPAIR, UPGRADEUPGRADE, ETC. - FOR NOW HARDCODED
+                    // harvest for starter
+                    // build
+                    // upgrade
+                    // repair
                     let newProcess = new DeliverEnergyToSpawn(true, this.PID, PriorityLevel.DEFAULT, creep.id); // UPDATE DELIVERY TO EVERYTHING
-                }
-                else if (creep.memory.type === CreepType.HAULER) {
-                    let newProcess = new DeliverEnergyToSpawn(true, this.PID, PriorityLevel.DEFAULT, creep.id);
                 }
             }
         }
 
-        if (creepsEmptyOfEnergy.length > 0) {
-            let sourceIndex = 0;
-            for(let creep of creepsEmptyOfEnergy){
+        if (creepsTrulyIdle.length > 0) {
+            for (let creep of creepsTrulyIdle) {
                 if (creep.memory.type === CreepType.MINER) {
-                    // find source not assigned
-                    let sourcesNotAssigned = cohortManager.sourcesInfo.filter(source => !miners.find(miner => miner.sourceId === source.sourceId));
+                    let source = null;
 
-                    if (sourcesNotAssigned.length > 0) {
-                        let source = sourcesNotAssigned[0];
-                        ------ stopped in this ASSIGN_TASKS
-                        let newProcess = new MineEnergy(true, this.PID, PriorityLevel.HIGH, creep.id, source);
+                    if (cohortManager) {
+                        for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
+                            if (!cohortManager.sourcesInfo[i].minerAssigned) {
+                                cohortManager.sourcesInfo[i].minerAssigned = true;
+                                cohortManager.sourcesInfo[i].spotsAssigned += 1;
+                                cohortManager.sourcesInfo[i].workPartsAssigned += creep.body.filter(part => part.type === WORK).length;
+                                source = cohortManager.sourcesInfo[i].sourceId;
+                                break;
+                            }
+                        }
                     }
 
+                    if (source) {
+                        let newProcess = new MineEnergy(true, this.PID, PriorityLevel.HIGH, creep.id, source);
+                    }
                 }
+                else if (creep.memory.type === CreepType.HAULER) {
+                    let haulingTargets = _.filter(cohortManager.sourcesInfo, sourceInfo => sourceInfo.energyStoredNearby - sourceInfo.energyToHauler > 0);
 
-                // // assign creeps to different sources and free source spot when creep gets away
-                // while (sourceIndex < cohortManager.sourcesInfo.length) {
-                //     if (cohortManager.sourcesInfo[0].spotsAssigned < cohortManager.sourcesInfo[0].availableSpots)
-                //         break
-                // }
+                    if (haulingTargets.length > 0) {
+                        let haulingTarget = haulingTargets[0];
 
-                // if (sourceAvailable.length === 0)
-                //     break
+                        for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
+                            if (cohortManager.sourcesInfo[i].sourceId === haulingTarget.sourceId) {
+                                cohortManager.sourcesInfo[i].energyToHauler += 50 * creep.body.filter(part => part.type === CARRY).length;
+                            }
+                        }
 
-                if (creep.memory.type === CreepType.HAULER) {
-                    // hauler energy from a target
-                    // assign a miner storage / miner energy dropped - if not assign nothing - just skip
-                    let source = cohortManager.sourcesInfo
-                    let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, source);
+                        // change to a hauler specific -> wich deals with taking energy from nearby source - container or anything else and deliver it to base
+                        let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, haulingTargets[0].sourceId);
+                    }
                 }
                 else if (creep.memory.type === CreepType.WORKER) {
-                    // get energy from somewhere to work
-                    let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, source);
+                    // let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, source);
+                    // get energy - harvest or get from storage
                 }
             }
         }
@@ -146,21 +152,21 @@ export class ImmunesManager extends Process {
 
         // TODO: check if it is for remote
         if (type === CreepType.WORKER) {
-            let firstWorker = kargs.hasOwnProperty("firstWorker")? true: false;
+            let firstWorker = kargs.hasOwnProperty("firstWorker") ? true : false;
             body = room.generateWorkerBody(firstWorker);
         }
-        else if (type === CreepType.MINER){
+        else if (type === CreepType.MINER) {
             let withCarry = false; // check if link exists
             body = room.generateMinerBody(withCarry);
         }
         else if (type === CreepType.HAULER) {
             body = room.generateHaulerBody();
         }
-        else{
+        else {
             body = [CARRY, WORK, MOVE];
         }
 
-        return {body, name, memory}
+        return { body, name, memory }
     }
 
     private getMinersProcess(cohortManager: CohortManager): Array<MineEnergy> {
@@ -171,13 +177,13 @@ export class ImmunesManager extends Process {
 
             let workParts = 0;
             _.forEach(creep.body, bodyPart => {
-                if(bodyPart.type === WORK)
+                if (bodyPart.type === WORK)
                     workParts++;
             });
 
             totalWorkParts += workParts;
 
-            if(cohortManager){
+            if (cohortManager) {
                 let index = _.findIndex(cohortManager.sourcesInfo, source => source.sourceId === creepProcessAsAny.sourceId);
                 if (index != -1)
                     cohortManager.sourcesInfo[index].workPartsAssigned = workParts;
@@ -192,9 +198,9 @@ export class ImmunesManager extends Process {
     private spawnImmunes(cohortManager: CohortManager) {
 
         // CREEPS LIST
-        let creeps  = this.getCreeps();
+        let creeps = this.getCreeps();
         let workers = _.filter(creeps, creep => creep.memory.type === CreepType.WORKER); // GENERIC WORKS - CAN DO ALL THE JOBS - BUT NOT ASSIGNED PERMANENTLY
-        let miners  = _.filter(creeps, creep => creep.memory.type === CreepType.MINER);
+        let miners = _.filter(creeps, creep => creep.memory.type === CreepType.MINER);
         let haulers = _.filter(creeps, creep => creep.memory.type === CreepType.HAULER);
 
         let requestData = null;
@@ -206,7 +212,7 @@ export class ImmunesManager extends Process {
 
         // TODO: check metrics - work capacity - cpu usage - use prioritys
         if (creeps.length < 1) {
-            requestData = this.generateCreepInfo(CreepType.WORKER, {firstWorker: true});
+            requestData = this.generateCreepInfo(CreepType.WORKER, { firstWorker: true });
         }
         else if (miners.length < cohortManager.sourcesInfo.length) {
             requestData = this.generateCreepInfo(CreepType.MINER);
@@ -229,7 +235,7 @@ export class ImmunesManager extends Process {
         let cohortManager = Scheduler.getProcessByPID(this.PPID) as CohortManager | null;
         let creepsIdle = this.getCreepsIdle(); // -> can be assigned a new job
 
-        if(!cohortManager)
+        if (!cohortManager)
             return;
 
         let spawnRequests = _.filter(this.requestsBeenProcessed, request => request.type === RequestType.SPAWN);
@@ -237,7 +243,7 @@ export class ImmunesManager extends Process {
         if (spawnRequests.length == 0)
             this.spawnImmunes(cohortManager);
 
-        if (creepsIdle.length){
+        if (creepsIdle.length) {
             this.assignTasks(cohortManager, creepsIdle);
         }
 

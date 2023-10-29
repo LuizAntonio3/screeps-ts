@@ -3,73 +3,92 @@ import { Task } from "./Task";
 import { CohortManager } from "empire/CohortManager";
 import { Scheduler } from "screepsOs/Scheduler";
 import { ImmunesManager } from "empire/ImmunesManager";
+import { StructureOwner } from "empire/Architect";
 
 export class MineEnergy extends Task {
 
     // task type
     _class: string = MineEnergy.name;
-    creepId: Id<Creep> | null;
     sourceId: Id<Source> | null;
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
-        super(generatePID, PPID, priority);
+        super(creepId, generatePID, PPID, priority);
         this.creepId = creepId;
         this.sourceId = sourceId;
-
-        if (creepId){
-            let creep = Game.getObjectById(creepId) as Creep; // better to put in task?
-            creep.memory.status = CreepStatus.BUSY;
-        }
     }
 
-    getCohortManager(): CohortManager | null {
-        let immunesManager = Scheduler.getProcessByPID(this.PPID) as ImmunesManager | null;
-
-        if (!immunesManager)
-            return null
-
-        return Scheduler.getProcessByPID(immunesManager.PPID) as CohortManager | null;
-    }
-
-    harvestEnergy(creep: Creep, source: Source|null) {
+    mineEnergy(creep: Creep, source: Source|null) {
 
         if(!creep || !source)
             return;
 
+        // move to container if exists
         if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
             creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
             return
         }
 
-        let energyNearby = 0;
-        let container = creep.pos.findInRange(FIND_STRUCTURES, 1).filter(structure => structure.structureType === STRUCTURE_CONTAINER) as Array<StructureContainer>;
+        let cohortManager = this.getCohortManager() as CohortManager;
+        let storageIndex = cohortManager.containersInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceId);
 
-        if (container.length === 0){
-            energyNearby = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1).filter(resource => resource.resourceType === RESOURCE_ENERGY)[0].amount;
+        if (storageIndex) {
+            let energyStored = 0;
+
+            if (cohortManager.containersInfo[storageIndex].storageId) {
+                let container = Game.getObjectById(cohortManager.containersInfo[storageIndex].storageId as any) as StructureContainer;
+
+                if (container) {
+                    energyStored += container.store.getUsedCapacity(RESOURCE_ENERGY);
+                }
+                else {
+                    cohortManager.containersInfo[storageIndex].storageId = null;
+                }
+            }
+
+            energyStored += creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1).filter(resource => resource.resourceType === RESOURCE_ENERGY)[0].amount;
+            cohortManager.containersInfo[storageIndex].energyStored = energyStored;
         }
         else {
-            energyNearby = container[0].store.getCapacity(RESOURCE_ENERGY);
+            // create virtual storage - real one is assigned by architect
+            cohortManager.containersInfo.push({
+                storageId: null,
+                structureOwnerType: StructureOwner.SOURCE,
+                structureOwnerId: this.sourceId,
+                energyStored: 0,
+                inQueueToBeTaken: 0
+            });
         }
-
-        let cohortManager = this.getCohortManager() as CohortManager;
-
-        _.forEach(cohortManager.sourcesInfo, sourceInfo => {
-            if (sourceInfo.sourceId === this.sourceId) {
-                sourceInfo.energyStoredNearby = energyNearby;
-
-            }
-        });
     }
 
     checkTaskStatus(creep: Creep, source: Source|null) {
-        if(!this.checkCreepAlive(creep))
-            return;
+        let creepAlive = creep.isAlive();
 
-        if (!source) {
+        if (!source || !creepAlive) {
             creep.memory.status = CreepStatus.IDLE;
-            creep.memory.lastTask = this._class;
+            let cohortManager = this.getCohortManager();
+
+            if(cohortManager) {
+                for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
+                    if (cohortManager.sourcesInfo[i].sourceId === this.sourceId) {
+                        cohortManager.sourcesInfo[i].minerAssigned = false;
+                        cohortManager.sourcesInfo[i].spotsAssigned -= 1;
+                        cohortManager.sourcesInfo[i].workPartsAssigned -= creep.body.filter(part => part.type === WORK).length;
+                        break;
+                    }
+                }
+            }
+
+            if (creepAlive)
+                creep.memory.lastTask = this._class;
+            else
+                delete Memory.creeps[creep.name];
+
             this.killProcess();
         }
+    }
+
+    endTask() {
+
     }
 
     run() {
@@ -85,7 +104,7 @@ export class MineEnergy extends Task {
             return;
         }
 
-        this.harvestEnergy(creep, source);
+        this.mineEnergy(creep, source);
         this.checkTaskStatus(creep, source);
     }
 }

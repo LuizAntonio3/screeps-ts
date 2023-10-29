@@ -5,6 +5,7 @@ import { EmpireManager } from "empire/EmpireManager";
 
 import "prototypes/creep"
 import "prototypes/room"
+import { CreepStatus } from "prototypes/creep";
 
 declare global {
   interface Memory {
@@ -44,8 +45,8 @@ export const loop = ErrorMapper.wrapLoop(() => {
   kernel.tick();
   scheduler.endOfTick();
 
-  // Automatically delete memory of missing creeps - turn this into a process
-  for (const name in Memory.creeps) {
+  // Automatically delete memory of missing creeps
+  for (const name in _.filter(Memory.creeps, creep => creep.status === CreepStatus.IDLE)) {
     if (!(name in Game.creeps)) {
       delete Memory.creeps[name];
     }

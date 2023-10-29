@@ -5,17 +5,10 @@ import { CreepStatus } from "prototypes/creep";
 export class DeliverEnergyToSpawn extends Task{
 
     _class: string = DeliverEnergyToSpawn.name;
-    creepId: Id<Creep> | null;
 
     // put default values
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null) {
-        super(generatePID, PPID, priority);
-        this.creepId = creepId;
-
-        if(creepId){
-            let creep = Game.getObjectById(creepId) as Creep; // better to put in task?
-            creep.memory.status = CreepStatus.BUSY;
-        }
+        super(creepId, generatePID, PPID, priority);
     }
 
     deliverEnergy(creep: Creep): Array<Structure> {

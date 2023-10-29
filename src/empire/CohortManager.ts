@@ -4,19 +4,7 @@ import { ImmunesManager } from "./ImmunesManager";
 import { Scheduler } from "screepsOs/Scheduler";
 import { CreepSpawnData } from "prototypes/creep";
 import { CenturysManager } from "./CenturysManager";
-
-interface SourceInfo {
-    sourceId: Id<Source>;
-    availableSpots: number;
-    spotsAssigned: number;
-    workPartsAssigned: number;
-    energyStoredNearby: number;
-}
-
-interface StrutureInfo {
-    structureId: Id<StructureSpawn | StructureExtension>,
-    energyBeenDelivered: number
-}
+import { SourceInfo, StrutureInfo, StorageInfo, StructureOwner } from "./Architect";
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
 export class CohortManager extends Process {
@@ -24,10 +12,13 @@ export class CohortManager extends Process {
     roomName: string;
     immmunesManagerPID: string | null;
     centurysManagerPID: string | null;
-    sourcesInfo: Array<SourceInfo>;
-    spawnsAndExtensions: Array<StrutureInfo>;
     requestsToEmpire: Array<Request>;
     requestsBeenProcessed: Array<Request>;
+
+    // cohort structures
+    sourcesInfo: Array<SourceInfo>;
+    spawnsAndExtensions: Array<StrutureInfo>;
+    containersInfo: Array<StorageInfo>
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
         super(PPID, priority, generatePID);
@@ -35,6 +26,7 @@ export class CohortManager extends Process {
         this.immmunesManagerPID = null;
         this.centurysManagerPID = null;
         this.sourcesInfo = [];
+        this.containersInfo = [];
         this.spawnsAndExtensions = [];
         this.requestsToEmpire = [];
         this.requestsBeenProcessed = [];
@@ -60,7 +52,14 @@ export class CohortManager extends Process {
                     availableSpots: room.findFreeSpotsAroundSource(source),
                     spotsAssigned: 0,
                     workPartsAssigned: 0,
-                    energyStoredNearby: 0
+                    minerAssigned: false,
+                    // storageInfo: {
+                    //     storageId: null,
+                    //     structureOwnerType: StructureOwner.SOURCE,
+                    //     structureOwnerId: source.id,
+                    //     energyStored: 0,
+                    //     inQueueToBeTaken: 0
+                    // }
                 };
 
                 this.sourcesInfo.push(sourceInfo);
@@ -76,10 +75,11 @@ export class CohortManager extends Process {
         this.spawnsAndExtensions = [];
 
         if (structures.length > 0) {
-            for (let structure of structures) {
+            for (let structure of (structures as Array<AnyStructure>)) {
                 let structureInfo: StrutureInfo = {
                     structureId: structure.id,
-                    energyBeenDelivered: 0
+                    structureType: structure.structureType,
+                    energyBeenDelivered: 0,
                 }
 
                 this.spawnsAndExtensions.push(structureInfo);
@@ -92,7 +92,7 @@ export class CohortManager extends Process {
     }
 
     private getImmunesManager(): ImmunesManager | null {
-        if(!this.immmunesManagerPID)
+        if (!this.immmunesManagerPID)
             return null
 
         let immunesManager = Scheduler.getProcessByPID(this.immmunesManagerPID);
@@ -105,7 +105,7 @@ export class CohortManager extends Process {
     }
 
     private getCenturysManager(): CenturysManager | null {
-        if(!this.centurysManagerPID)
+        if (!this.centurysManagerPID)
             return null
 
         let centurysManager = Scheduler.getProcessByPID(this.centurysManagerPID);
@@ -137,7 +137,7 @@ export class CohortManager extends Process {
         let immunesRequest = immunesManager?.getRequest();
         let centurysRequest = centurysManager?.getRequest();
 
-        if(!immunesManager || (!immunesRequest && !centurysRequest))
+        if (!immunesManager || (!immunesRequest && !centurysRequest))
             return []
 
         let requests = Array<Request>();
@@ -156,7 +156,7 @@ export class CohortManager extends Process {
 
     processRequest(requests: Array<Request>) {
 
-        if(requests.length == 0)
+        if (requests.length == 0)
             return
 
         let request = requests.shift() as Request; // TODO: iterate over all requests
@@ -170,12 +170,12 @@ export class CohortManager extends Process {
                 let spawnRequestResponse = freeSpawns[0].spawnCreep(spawnRequest.body, spawnRequest.name, { memory: spawnRequest.memory });
 
                 // check different reponses
-                if (spawnRequestResponse == OK){
-                    if (request.requesterName == ImmunesManager.name){
+                if (spawnRequestResponse == OK) {
+                    if (request.requesterName == ImmunesManager.name) {
                         let immunesManager = this.getImmunesManager() as ImmunesManager;
                         immunesManager.newRequestBeenProcessed(request);
                     }
-                    else if (request.requesterName == CenturysManager.name){
+                    else if (request.requesterName == CenturysManager.name) {
                         let centurysManager = this.getCenturysManager() as CenturysManager;
                         centurysManager.newRequestBeenProcessed(request);
                     }
