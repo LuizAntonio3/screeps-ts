@@ -120,6 +120,7 @@ export class ImmunesManager extends Process {
                         for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
                             if (cohortManager.sourcesInfo[i].sourceId === haulingTarget.sourceId) {
                                 cohortManager.sourcesInfo[i].energyToHauler += 50 * creep.body.filter(part => part.type === CARRY).length;
+                                // inQueueToBeTaken from storagesInfo
                             }
                         }
 

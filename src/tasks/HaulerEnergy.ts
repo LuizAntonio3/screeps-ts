@@ -1,4 +1,4 @@
-import { StructureOwner } from "empire/Architect";
+import { StorageInfo, StorageType, StructureOwner } from "empire/Architect";
 import { Task } from "./Task";
 
 enum EnergyHaulerStates {
@@ -12,41 +12,52 @@ export class HaulerEnergy extends Task {
     _class: string = HaulerEnergy.name;
     sourceTargetId: Id<Source> | null;
     state: EnergyHaulerStates;
+    targetStorage: Id<AnyStructure> | null;
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
         super(creepId, generatePID, PPID, priority);
         this.sourceTargetId = sourceId;
         this.state = EnergyHaulerStates.RETRIEVE_ENERGY;
+        this.targetStorage = null;
     }
 
-    checkTaskStatus() {
+    checkTaskStatus(creep: Creep) {
+        if (!creep.isAlive())
+            this.endTask()
 
+        // handles state change
+        if (creep.store.getFreeCapacity() === 0) {
+            this.state = EnergyHaulerStates.DELIVER_ENERGY;
+            // remove energy from in queue To be taken
+            ****
+        }
+        else if (creep.store.getUsedCapacity() === 0) {
+            this.endTask();
+            // remove energy in queue to be delivered
+            ****
+        }
     }
 
     endTask() {
-
+        // clean target
     }
 
     moveToSource(creep: Creep, source: Source|null) {
         if (!creep || !source)
             return
 
-        if (creep.store.getFreeCapacity() === 0) {
-            this.state = EnergyHaulerStates.DELIVER_ENERGY;
-            return
-        }
         let cohortManager = this.getCohortManager();
 
         if (creep.pos.inRangeTo(source, 4)) {
-            let storageIndex = cohortManager?.containersInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceTargetId);
+            let storageIndex = cohortManager?.storagesInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceTargetId);
 
             if (!storageIndex){
                 this.endTask();
                 return
             }
 
-            if (cohortManager?.containersInfo[storageIndex].storageId) {
-                let container = Game.getObjectById(cohortManager.containersInfo[storageIndex].storageId as any) as StructureContainer;
+            if (cohortManager?.storagesInfo[storageIndex].storageId) {
+                let container = Game.getObjectById(cohortManager.storagesInfo[storageIndex].storageId as any) as StructureContainer;
 
                 if (container) {
                     if (creep.withdraw(container, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
@@ -63,83 +74,134 @@ export class HaulerEnergy extends Task {
                     }
                 }
             }
-
-            containerInfo.inQueueToBeTaken
-            containerInfo.inQueueToBeTaken
-            containerInfo.inQueueToBeTaken
         }
         else {
             creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
     }
 
-    moveToBase(creep: Creep, source: Source|null) {
-        if (creep.room.storage) {
-            if (creep.transfer(creep.room.storage, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(creep.room.storage);
+    updateTarget(creep: Creep, storage: StorageInfo | null, storageGaveError?: boolean = false) {
+        if (storage) {
+            let cohortManager = this.getCohortManager();
+            if (!cohortManager){
+                this.endTask()
+                return
             }
-            return
+
+            this.targetStorage = storage.storageId;
+            let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === storage.storageId);
+            cohortManager.storagesInfo[index].inQueueToBeDelivered += creep.store.getUsedCapacity() * CARRY_CAPACITY;
+        }
+        else if (storageGaveError && this.targetStorage) {
+            // update in queue info
+            ****
+        }
+    }
+
+    findTarget(creep: Creep): StorageInfo | null {
+        if (this.targetStorage)
+            return null
+
+        if (creep.room.storage) {
+            this.targetStorage = creep.room.storage.id;
+            return null
         }
 
         let cohortManager = this.getCohortManager();
-        if (!cohortManager)
-            return
+        if (!cohortManager){
+            this.endTask()
+            return null
+        }
 
-        let containersInfo = cohortManager.containersInfo.filter(containerInfo => {
-            return containerInfo.structureOwnerType === StructureOwner.SPAWN && containerInfo.storageId !== null
-        });
+        // listing storages needing energy in order of priority
+        let containersInfo: Array<StorageInfo> = [];
+        let spawnsInfo: Array<StorageInfo>  = [];
+        let extensionsInfo: Array<StorageInfo>  = [];
+
+        for (const storageInfo of cohortManager.storagesInfo) {
+            if (storageInfo.structureOwnerType !== StructureOwner.SPAWN && storageInfo.storageId !== null)
+                continue
+
+            let capacityUsed = storageInfo.energyStored + storageInfo.inQueueToBeDelivered;
+
+            if (storageInfo.storageType === StorageType.CONTAINER && capacityUsed < CONTAINER_CAPACITY) {
+                containersInfo.push(storageInfo);
+                break
+            }
+            else if (storageInfo.storageType === StorageType.SPAWN && capacityUsed < SPAWN_ENERGY_CAPACITY) {
+                spawnsInfo.push(storageInfo);
+            }
+            else if (storageInfo.storageType === StorageType.EXTENSION && capacityUsed < EXTENSION_ENERGY_CAPACITY[creep.room.controller?.level as number]) {
+                spawnsInfo.push(storageInfo);
+            }
+
+        }
 
         if (containersInfo.length > 0) {
-            let container = Game.getObjectById(containersInfo[0].storageId as any) as StructureContainer;
+            for (const containerInfo of containersInfo){
+                let container = Game.getObjectById(containerInfo.storageId as any) as StructureContainer;
 
-            if (container) {
-                let transferResult = creep.transfer(container, RESOURCE_ENERGY);
-                if (transferResult === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(container);
+                if (container) {
+                    return containerInfo;
                 }
-                else if (transferResult === ERR_FULL) {
-                    this.endTask(); // to start searching for another place to put this energy
+                else {
+                    let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === containerInfo.storageId);
+                    cohortManager.storagesInfo[index].storageId = null;
                 }
             }
-            else {
-                let index = cohortManager.containersInfo.findIndex(containerInfo => containerInfo === containersInfo[0]);
-                cohortManager.containersInfo[index].storageId = null;
-            }
-
-            return
         }
 
-        let spawns = cohortManager.spawnsAndExtensions.filter(structure => structure.structureType === STRUCTURE_SPAWN);
-        spawns.map(spawn => {
-            let result = Game.getObjectById(spawn.structureId);
+        // ADD ONLY IF NEEDED: check if there is static hauler to handle spawn delivery - else spawn delivere when needed
 
-            if (result) {
-                result = result as StructureSpawn;
-                if (result.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                    return result;
+        if (spawnsInfo.length > 0) {
+            for (const spawnInfo of spawnsInfo){
+                let spawn = Game.getObjectById(spawnInfo.storageId as any) as StructureSpawn;
+
+                if (spawn) {
+                    return spawnInfo;
+                }
+                else {
+                    let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === spawnInfo.storageId);
+                    cohortManager.storagesInfo[index].storageId = null;
                 }
             }
-
-            return null
-        });
-
-        spawns = spawns.filter(spawn => spawn !== null);
-
-        if (spawns.length) {
-            // deposit energy in spawn
-            return
         }
 
-        // MAYBE use target deposit in memory? - to handle flicking
-        // CHECK if there is static hauler to handle spawn delivery - else spawn delivere when needed
-        stopped here
+        if (extensionsInfo.length > 0) {
+            for (const extensionInfo of extensionsInfo){
+                let extension = Game.getObjectById(extensionInfo.storageId as any) as StructureExtension;
 
+                if (extension) {
+                    return extensionInfo;
+                }
+                else {
+                    let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === extensionInfo.storageId);
+                    cohortManager.storagesInfo[index].storageId = null;
+                }
+            }
+        }
 
-        // search container - assigned to spawn
-        // search extensions
-        // search spawn
-        // deliver energy to any of it in this order
-        // hauler is not mainly responsible for the deliver of energy to extensions and spawns
+        return null;
+    }
+
+    moveToBase(creep: Creep) {
+        if (!this.targetStorage)
+            return
+
+        let tranferTarget = Game.getObjectById(this.targetStorage);
+
+        if (!tranferTarget)
+            return
+
+        let tranferResult = creep.transfer(tranferTarget, RESOURCE_ENERGY); // TODO: improve to transfer every type of resource - use prototypes
+
+        if (tranferResult === ERR_NOT_IN_RANGE) {
+            creep.moveTo(tranferTarget);
+        }
+        else if (tranferResult === ERR_FULL || tranferResult === ERR_INVALID_TARGET) {
+            // update target info
+            ****
+        }
     }
 
     run() {
@@ -160,7 +222,9 @@ export class HaulerEnergy extends Task {
                 this.moveToSource(creep, source);
                 break
             case EnergyHaulerStates.DELIVER_ENERGY:
-                this.moveToBase(creep, source);
+                let target = this.findTarget(creep);
+                this.updateTarget(creep, target);
+                this.moveToBase(creep);
                 break
         }
 

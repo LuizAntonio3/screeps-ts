@@ -17,8 +17,8 @@ export class CohortManager extends Process {
 
     // cohort structures
     sourcesInfo: Array<SourceInfo>;
-    spawnsAndExtensions: Array<StrutureInfo>;
-    containersInfo: Array<StorageInfo>
+    // spawnsAndExtensions: Array<StrutureInfo>;
+    storagesInfo: Array<StorageInfo>
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, roomName: string = "") {
         super(PPID, priority, generatePID);
@@ -26,8 +26,8 @@ export class CohortManager extends Process {
         this.immmunesManagerPID = null;
         this.centurysManagerPID = null;
         this.sourcesInfo = [];
-        this.containersInfo = [];
-        this.spawnsAndExtensions = [];
+        this.storagesInfo = [];
+        // this.spawnsAndExtensions = [];
         this.requestsToEmpire = [];
         this.requestsBeenProcessed = [];
 

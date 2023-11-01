@@ -31,6 +31,16 @@ export class Task extends Process {
         }
     }
 
+    // functions to be overwritten
+
+    checkTaskStatus(creep: Creep, source?: Source|null) {
+        // handles logic to call endTask or state changes
+    }
+
+    endTask(creep: Creep) {
+        // finish task cleanly
+    }
+
     run() {
 
     }
