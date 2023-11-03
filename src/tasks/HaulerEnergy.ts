@@ -28,13 +28,19 @@ export class HaulerEnergy extends Task {
         // handles state change
         if (creep.store.getFreeCapacity() === 0) {
             this.state = EnergyHaulerStates.DELIVER_ENERGY;
+            let cohortManager = this.getCohortManager();
+
+            if (!cohortManager)
+                return
+
             // remove energy from in queue To be taken
-            ****
+            let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceTargetId);
+            cohortManager.storagesInfo[index].inQueueToBeTaken -= creep.store.getCapacity() * CARRY_CAPACITY; // may give bug - look up *
         }
         else if (creep.store.getUsedCapacity() === 0) {
+            // removes energy from in queue to be delivered
+            this.updateTarget(creep, null, true);
             this.endTask();
-            // remove energy in queue to be delivered
-            ****
         }
     }
 
@@ -80,7 +86,7 @@ export class HaulerEnergy extends Task {
         }
     }
 
-    updateTarget(creep: Creep, storage: StorageInfo | null, storageGaveError?: boolean = false) {
+    updateTarget(creep: Creep, storage: StorageInfo | null, update?: boolean) {
         if (storage) {
             let cohortManager = this.getCohortManager();
             if (!cohortManager){
@@ -90,11 +96,19 @@ export class HaulerEnergy extends Task {
 
             this.targetStorage = storage.storageId;
             let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === storage.storageId);
-            cohortManager.storagesInfo[index].inQueueToBeDelivered += creep.store.getUsedCapacity() * CARRY_CAPACITY;
+            cohortManager.storagesInfo[index].inQueueToBeDelivered += creep.store.getUsedCapacity() * CARRY_CAPACITY; // * because of this .getUsedCapacity
         }
-        else if (storageGaveError && this.targetStorage) {
-            // update in queue info
-            ****
+        else if (update && this.targetStorage) {
+            let cohortManager = this.getCohortManager();
+            if (!cohortManager){
+                this.endTask()
+                return
+            }
+
+            let oldStorage = this.targetStorage;
+            this.targetStorage = null;
+            let index = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.storageId === oldStorage);
+            cohortManager.storagesInfo[index].inQueueToBeDelivered -= creep.store.getCapacity() * CARRY_CAPACITY; // may give bug - look up *
         }
     }
 
@@ -200,7 +214,7 @@ export class HaulerEnergy extends Task {
         }
         else if (tranferResult === ERR_FULL || tranferResult === ERR_INVALID_TARGET) {
             // update target info
-            ****
+            this.updateTarget(creep, null, true);
         }
     }
 
@@ -228,6 +242,6 @@ export class HaulerEnergy extends Task {
                 break
         }
 
-        this.checkTaskStatus();
+        this.checkTaskStatus(creep);
     }
 }
