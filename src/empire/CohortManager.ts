@@ -4,7 +4,7 @@ import { ImmunesManager } from "./ImmunesManager";
 import { Scheduler } from "screepsOs/Scheduler";
 import { CreepSpawnData } from "prototypes/creep";
 import { CenturysManager } from "./CenturysManager";
-import { SourceInfo, StrutureInfo, StorageInfo, StructureOwner } from "./Architect";
+import { SourceInfo, StrutureInfo, StorageInfo, StructureOwner, StorageType } from "./Architect";
 
 // Basically the RoomManager - Also dealing with Remotes of this Room
 export class CohortManager extends Process {
@@ -53,13 +53,6 @@ export class CohortManager extends Process {
                     spotsAssigned: 0,
                     workPartsAssigned: 0,
                     minerAssigned: false,
-                    // storageInfo: {
-                    //     storageId: null,
-                    //     structureOwnerType: StructureOwner.SOURCE,
-                    //     structureOwnerId: source.id,
-                    //     energyStored: 0,
-                    //     inQueueToBeTaken: 0
-                    // }
                 };
 
                 this.sourcesInfo.push(sourceInfo);
@@ -68,21 +61,25 @@ export class CohortManager extends Process {
     }
 
     private updateExtensionsList() {
-        let structures: any = this.getRoom().find(FIND_STRUCTURES).filter(structure => {
+        let ExtensionsAndSpawns = this.getRoom().find(FIND_STRUCTURES).filter(structure => {
             return structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN
-        });
+        }) as Array<AnyStoreStructure>;
 
-        this.spawnsAndExtensions = [];
+        let firstSpawn = ExtensionsAndSpawns.filter(structure => structure.structureType === STRUCTURE_SPAWN)[0];
 
-        if (structures.length > 0) {
-            for (let structure of (structures as Array<AnyStructure>)) {
-                let structureInfo: StrutureInfo = {
-                    structureId: structure.id,
-                    structureType: structure.structureType,
-                    energyBeenDelivered: 0,
+        if (ExtensionsAndSpawns.length > 0) {
+            for (let structure of ExtensionsAndSpawns) {
+                let structureInfo: StorageInfo = {
+                    storageId: structure.id,
+                    storageType: StorageType.EXTENSION,
+                    structureOwnerId: structure.structureType === STRUCTURE_SPAWN? null : firstSpawn.id,
+                    structureOwnerType: StructureOwner.SPAWN,
+                    energyStored: structure.store.getUsedCapacity(RESOURCE_ENERGY),
+                    inQueueToBeDelivered: 0,
+                    inQueueToBeTaken: 0
                 }
 
-                this.spawnsAndExtensions.push(structureInfo);
+                this.storagesInfo.push(structureInfo);
             }
         }
     }

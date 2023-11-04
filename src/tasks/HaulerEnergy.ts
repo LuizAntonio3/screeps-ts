@@ -57,7 +57,7 @@ export class HaulerEnergy extends Task {
         if (creep.pos.inRangeTo(source, 4)) {
             let storageIndex = cohortManager?.storagesInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceTargetId);
 
-            if (!storageIndex){
+            if (!storageIndex || storageIndex === -1){
                 this.endTask();
                 return
             }

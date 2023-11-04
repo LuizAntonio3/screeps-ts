@@ -5,18 +5,11 @@ export class HarvestEnergy extends Task {
 
     // task type
     _class: string = HarvestEnergy.name;
-    creepId: Id<Creep> | null;
     sourceId: Id<Source> | null;
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
-        super(generatePID, PPID, priority);
-        this.creepId = creepId;
+        super(creepId, generatePID, PPID, priority);
         this.sourceId = sourceId;
-
-        if(creepId){
-            let creep = Game.getObjectById(creepId) as Creep; // better to put in task?
-            creep.memory.status = CreepStatus.BUSY;
-        }
     }
 
     harvestEnergy(creep: Creep, source: Source|null) {
@@ -39,15 +32,30 @@ export class HarvestEnergy extends Task {
 
     checkTaskStatus(creep: Creep, source: Source|null) {
 
-        if(!this.checkCreepAlive(creep))
+        if(!creep.isAlive())
             return;
 
         // may give a bug if source dissapear
         if (!source || creep.store[RESOURCE_ENERGY] === creep.store.getCapacity()) {
             creep.memory.status = CreepStatus.ENERGY_FULL;
             creep.memory.lastTask = this._class;
+            let cohortManager = this.getCohortManager();
+            if (cohortManager) {
+                let index = cohortManager.storagesInfo.findIndex(storageInfo => storageInfo.structureOwnerId === this.sourceId);
+
+                if (index > -1) {
+                    cohortManager.sourcesInfo[index].workPartsAssigned -= creep.body.filter(part => part.type === WORK).length;
+                    cohortManager.sourcesInfo[index].spotsAssigned -= 1;
+                }
+
+            }
+
             this.killProcess();
         }
+    }
+
+    endTask() {
+        // clean target
     }
 
     run() {

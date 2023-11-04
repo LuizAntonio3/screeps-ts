@@ -6,6 +6,8 @@ import { CreepSpawnData, CreepStatus, CreepType } from "prototypes/creep";
 import { HarvestEnergy } from "tasks/HarvestEnergy";
 import { MineEnergy } from "tasks/MineEnergy";
 import { DeliverEnergyToSpawn } from "tasks/DeliverEnergyToSpawn";
+import { StructureOwner } from "./Architect";
+import { HaulerEnergy } from "tasks/HaulerEnergy";
 
 // Manages the workes
 export class ImmunesManager extends Process {
@@ -72,6 +74,8 @@ export class ImmunesManager extends Process {
     }
 
     private assignTasks(cohortManager: CohortManager, creepsIdle: Array<Creep>) {
+        debugger
+
         let creepsTrulyIdle = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.IDLE);
         let workersFullOfEnergy = _.filter(creepsIdle, creep => creep.memory.status === CreepStatus.ENERGY_FULL);
 
@@ -96,14 +100,15 @@ export class ImmunesManager extends Process {
                     let source = null;
 
                     if (cohortManager) {
-                        for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
-                            if (!cohortManager.sourcesInfo[i].minerAssigned) {
-                                cohortManager.sourcesInfo[i].minerAssigned = true;
-                                cohortManager.sourcesInfo[i].spotsAssigned += 1;
-                                cohortManager.sourcesInfo[i].workPartsAssigned += creep.body.filter(part => part.type === WORK).length;
-                                source = cohortManager.sourcesInfo[i].sourceId;
-                                break;
-                            }
+                        let index = cohortManager.sourcesInfo.findIndex(sourceInfo => {
+                            return sourceInfo.minerAssigned === false
+                        });
+
+                        if (index > -1) {
+                            cohortManager.sourcesInfo[index].minerAssigned = true;
+                            cohortManager.sourcesInfo[index].spotsAssigned += 1;
+                            cohortManager.sourcesInfo[index].workPartsAssigned += creep.body.filter(part => part.type === WORK).length;
+                            source = cohortManager.sourcesInfo[index].sourceId;
                         }
                     }
 
@@ -112,25 +117,38 @@ export class ImmunesManager extends Process {
                     }
                 }
                 else if (creep.memory.type === CreepType.HAULER) {
-                    let haulingTargets = _.filter(cohortManager.sourcesInfo, sourceInfo => sourceInfo.energyStoredNearby - sourceInfo.energyToHauler > 0);
+                    let haulingTargets = _.filter(cohortManager.storagesInfo, storageInfo => {
+                        return storageInfo.structureOwnerType === StructureOwner.SOURCE &&
+                        storageInfo.energyStored - storageInfo.inQueueToBeTaken > 0
+                    });
 
                     if (haulingTargets.length > 0) {
                         let haulingTarget = haulingTargets[0];
 
-                        for (let i = 0; i < cohortManager.sourcesInfo.length; i++) {
-                            if (cohortManager.sourcesInfo[i].sourceId === haulingTarget.sourceId) {
-                                cohortManager.sourcesInfo[i].energyToHauler += 50 * creep.body.filter(part => part.type === CARRY).length;
-                                // inQueueToBeTaken from storagesInfo
-                            }
-                        }
+                        let index = cohortManager.storagesInfo.findIndex(storageInfo => storageInfo.storageId === haulingTarget.storageId);
+                        cohortManager.storagesInfo[index].inQueueToBeTaken += creep.store.getFreeCapacity();
 
-                        // change to a hauler specific -> wich deals with taking energy from nearby source - container or anything else and deliver it to base
-                        let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, haulingTargets[0].sourceId);
+                        let newProcess = new HaulerEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, haulingTargets[0].structureOwnerId as Id<Source>);
                     }
                 }
                 else if (creep.memory.type === CreepType.WORKER) {
-                    // let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, source);
-                    // get energy - harvest or get from storage
+                    let source = null;
+
+                    if (cohortManager) {
+                        let index = cohortManager.sourcesInfo.findIndex(sourceInfo => {
+                            return sourceInfo.availableSpots - sourceInfo.spotsAssigned > 0
+                        });
+
+                        if (index > -1) {
+                            cohortManager.sourcesInfo[index].spotsAssigned += 1;
+                            cohortManager.sourcesInfo[index].workPartsAssigned += creep.body.filter(part => part.type === WORK).length;
+                            source = cohortManager.sourcesInfo[index].sourceId;
+                        }
+                    }
+
+                    if (source) {
+                        let newProcess = new HarvestEnergy(true, this.PID, PriorityLevel.DEFAULT, creep.id, source);
+                    }
                 }
             }
         }

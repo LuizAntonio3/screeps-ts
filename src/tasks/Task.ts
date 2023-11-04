@@ -33,7 +33,7 @@ export class Task extends Process {
 
     // functions to be overwritten
 
-    checkTaskStatus(creep: Creep, source?: Source|null) {
+    checkTaskStatus(creep: Creep, structure?: Source|Array<Structure>|null) {
         // handles logic to call endTask or state changes
     }
 

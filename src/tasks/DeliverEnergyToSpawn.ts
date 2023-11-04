@@ -29,7 +29,7 @@ export class DeliverEnergyToSpawn extends Task{
     }
 
     checkTaskStatus(creep: Creep, targets: Array<Structure>) {
-        if(!this.checkCreepAlive(creep))
+        if(!creep.isAlive())
             return;
 
         if(creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0 || targets.length === 0){

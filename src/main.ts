@@ -29,8 +29,6 @@ declare global {
 
 var maxCPUPerTickPercentual = 0.7; // maximum is Game.cpu.tickLimit = 500 when bucket is full
 export const loop = ErrorMapper.wrapLoop(() => {
-  debugger;
-
   let maxCPUPerTick = maxCPUPerTickPercentual * Game.cpu.tickLimit; // TODO: check this based on bucket size
 
   let kernel = new Kernel(maxCPUPerTick);

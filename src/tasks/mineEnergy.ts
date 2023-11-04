@@ -13,7 +13,6 @@ export class MineEnergy extends Task {
 
     constructor(generatePID: boolean = false, PPID: string = "", priority: number = 0, creepId: Id<Creep> | null = null, sourceId: Id<Source> | null = null) {
         super(creepId, generatePID, PPID, priority);
-        this.creepId = creepId;
         this.sourceId = sourceId;
     }
 
@@ -31,7 +30,7 @@ export class MineEnergy extends Task {
         let cohortManager = this.getCohortManager() as CohortManager;
         let storageIndex = cohortManager.storagesInfo.findIndex(containerInfo => containerInfo.structureOwnerId === this.sourceId);
 
-        if (storageIndex) {
+        if (storageIndex > -1) {
             let energyStored = 0;
 
             if (cohortManager.storagesInfo[storageIndex].storageId) {

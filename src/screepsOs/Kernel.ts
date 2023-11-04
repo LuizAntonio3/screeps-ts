@@ -23,7 +23,7 @@ export class Kernel {
                 process.updateMeanCpuUsage(beforeProcessCpuUsage, Game.cpu.getUsed());
             }
             catch(e){
-                console.log(`PROCESS: ${process} - EXECUTED WITH ERROR: ${e}`);
+                console.log(`PROCESS PID: ${process.PID} - EXECUTED WITH ERROR: ${e}`);
             }
         }
     }
