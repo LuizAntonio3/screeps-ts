@@ -1,29 +1,30 @@
 import { Scheduler } from "./Scheduler";
-import { Process } from "./Process";
+import { ProcessStatus } from "./Process";
 
 export class Kernel {
     maxUsageCPU: number;
-    scheduler: Scheduler;
 
-    constructor(scheduler: Scheduler, maxUsageCPU: number) {
-        this.scheduler = scheduler;
+    constructor(maxUsageCPU: number) {
         this.maxUsageCPU = maxUsageCPU;
     }
 
-    public tick() {
-        // get new process from the scheduler and runs it
-        // console.log("tick before: ", Game.cpu.getUsed());
-
+    tick() {
         while (Game.cpu.getUsed() < this.maxUsageCPU) {
+            let beforeProcessCpuUsage = Game.cpu.getUsed();
             let cpuAvailable = this.maxUsageCPU - Game.cpu.getUsed();
-            let process = this.scheduler.getProcess(cpuAvailable);
-            // break if there is no process
-            if (!process)
+
+            let process = Scheduler.getProcess(cpuAvailable);
+
+            if (!process || process.status == ProcessStatus.STOPPED)
                 break;
 
-            process.run();
+            try{
+                process.run();
+                process.updateMeanCpuUsage(beforeProcessCpuUsage, Game.cpu.getUsed());
+            }
+            catch(e){
+                console.log(`PROCESS PID: ${process.PID} - EXECUTED WITH ERROR: ${e}`);
+            }
         }
-
-        // console.log("tick after: ", Game.cpu.getUsed());
     }
 }

@@ -1,46 +1,95 @@
-import { Process } from "./Process"
-import * as rolesIndex from "roles/index"
+import { Process, ProcessStatus } from "./Process"
+import { ScreepsSerializer } from "./Serializer";
 
 export class Scheduler {
-    processTable: Array<Process> = [];
+    static processTable: Array<Process> = [];
+    static executedProcessTable: Array<Process>;
+    static skippedProcessTable: Array<Process>;
 
     constructor() {
-        // first restore process from creeps
-        for (let name in Game.creeps) {
-            let creep = Game.creeps[name];
-            let creepRole = creep.memory.role;
+        let processTable = ScreepsSerializer.deserializeFromMemory();
 
-            if (creepRole in rolesIndex) {
-                let creepProcess = new (rolesIndex as any)[creepRole](creep); // add to memory the has run in the last tick flag
-                this.addNewProcess(creepProcess);
-            }
-            else {
-                console.log("invalid role: " + creepRole);
-            }
-        }
+        if(processTable)
+            Scheduler.rebuildProcessTable(processTable)
 
-        // TODO: restore the rest of the process from memory
+        Scheduler.organizeTable();
+        Scheduler.executedProcessTable = [];
+        Scheduler.skippedProcessTable = [];
     }
 
-    public addNewProcess(process: Process) {
-        this.processTable.push(process);
+    static resetArrays() {
+        Scheduler.processTable = [];
     }
 
-    public getProcess(maxCPU: number): Process | null {
-        // return a process that is below the maxCPU usage to the kernel to run
-        let process = this.processTable.pop();
-        if (!process) {
+    static getCompleteProcessTable(): Array<Process> {
+        return Scheduler.processTable.concat(Scheduler.executedProcessTable, this.skippedProcessTable)
+    }
+
+    static rebuildProcessTable(processArray: Array<Process>){
+        Scheduler.processTable = Scheduler.processTable.concat(processArray);
+    }
+
+    static addNewProcess(process: Process) {
+        Scheduler.processTable.push(process);
+    }
+
+    static getProcessByPID(PID: string | null): Process | null {
+        if(!PID)
             return null;
+        return _.filter(Scheduler.getCompleteProcessTable(), process => {
+            let processComparison = process.PID === PID;
+            return processComparison;
+        })[0];
+    }
+
+    static getProcess(maxCPU: number): Process | null {
+        while(true) {
+            let process = Scheduler.processTable.shift();
+            if (!process) {
+                return null;
+            }
+
+            if (process.meanCpuUse > maxCPU) {
+                this.skippedProcessTable.push(process);
+                continue
+            }
+
+            Scheduler.executedProcessTable.push(process);
+            return process;
         }
-
-        return process;
     }
 
-    public organizeTable() {
-        // organize table according to process priority
+    static organizeTable() {
+        _.sortBy(Scheduler.processTable, (process) => process.currentPriority)
     }
 
-    public checkPriority() {
-        // TODO: iterate over the process table and give bigger priority to the process that did not run in this tick
+    static increasePriority() {
+        // TODO: takes flags from its parent process to check the correct amount of increase
+        let amount = 1;
+        this.rebuildProcessTable(Scheduler.skippedProcessTable);
+        _.forEach(Scheduler.processTable, process => process.increaseCurrentPriority(amount));
+    }
+
+    static addBackExecutedProcess() {
+        _.remove(Scheduler.executedProcessTable, process => {
+            if(process.status == ProcessStatus.RUNNING){
+                process.resetPriority();
+                return false;
+            }
+            else
+                return true;
+        });
+
+        if(Scheduler.executedProcessTable.length > 0){
+            Scheduler.rebuildProcessTable(Scheduler.executedProcessTable);
+            Scheduler.executedProcessTable = [];
+        }
+    }
+
+    endOfTick() {
+        Scheduler.increasePriority();
+        Scheduler.addBackExecutedProcess();
+        ScreepsSerializer.serializeToMemory(Scheduler.processTable);
+        Scheduler.resetArrays();
     }
 }
