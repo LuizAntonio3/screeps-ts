@@ -1,7 +1,7 @@
 # Screeps MMO - Romain Empire Based AI
 
 ## Features
- - Recaftored to Typescript;
+ - Refactored to Typescript;
  - OS Based (Kernel, Scheduler, Process);
  - Based on the Roman Empire social structure:
    - EmpireManager (Rooms Manager), CohortManager (Single Room Manager), ImmunesManager (workers manager), CenturysManager (army manager - Not yet implemented);
