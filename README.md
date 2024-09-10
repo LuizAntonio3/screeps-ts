@@ -4,7 +4,7 @@
  - Recaftored to Typescript;
  - OS Based (Kernel, Scheduler, Process);
  - Based on the Roman Empire social structure;
- - - Class like: EmpireManager (Rooms), CohortManager (Room), ImmunesManager (workers)
+   - Class like: EmpireManager (Rooms), CohortManager (Room), ImmunesManager (workers)
 
 ## Basic Usage
 
